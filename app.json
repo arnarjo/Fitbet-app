@@ -3,12 +3,17 @@
     "name": "FitBet",
     "slug": "fitbet",
     "version": "1.0.0",
+    "icon": "./app/assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-"icon": "https://via.placeholder.com/1024",
     "assetBundlePatterns": [
-      "**/*"
-    ],
+  "**/*"
+],
+"splash": {
+  "image": "./app/assets/splash.png",
+  "resizeMode": "contain",
+  "backgroundColor": "#0a0a0f"
+},
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "is.fitbet.app",
@@ -25,13 +30,14 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
-    },
+     },
     "android": {
-      "package": "is.fitbet.app",
-      "versionCode": 1,
-"adaptiveIcon": {
-  "backgroundColor": "#0a0a0f"
-},
+     "package": "is.fitbet.app",
+     "versionCode": 1,
+     "adaptiveIcon": {
+      "foregroundImage": "./app/assets/adaptive-icon.png",
+      "backgroundColor": "#0a0a0f"
+  },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
@@ -40,7 +46,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"
-      ],
+      ]
     },
     "plugins": [
       [
