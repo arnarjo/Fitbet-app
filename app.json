@@ -3,14 +3,14 @@
     "name": "FitBet",
     "slug": "fitbet",
     "version": "1.0.0",
-    "icon": "./app/assets/icon.png",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": [
       "**/*"
     ],
     "splash": {
-      "image": "./app/assets/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0f"
     },
@@ -26,7 +26,6 @@
         "NSMicrophoneUsageDescription": "FitBet þarf hljóðnema til að taka sönnunarmyndbönd.",
         "NSMotionUsageDescription": "FitBet notar hreyfiskynjarann til að rekja líkamsþjálfun.",
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -36,17 +35,10 @@
       "package": "is.fitbet.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./app/assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0f"
       },
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE",
-        "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
@@ -73,9 +65,7 @@
           "cameraPermission": "FitBet þarf aðgang að myndavél til að taka sönnunarmyndir."
         }
       ],
-      [
-        "expo-secure-store"
-      ],
+      "expo-secure-store",
       "@react-native-community/datetimepicker"
     ],
     "extra": {
@@ -83,12 +73,6 @@
         "projectId": "b521fa2f-ed33-4a86-a63a-5787c27830d5"
       }
     },
-    "owner": "fitbet",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/b521fa2f-ed33-4a86-a63a-5787c27830d5"
-    }
+    "owner": "fitbet"
   }
 }
