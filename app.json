@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "FitBet",
+    "slug": "fitbet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0f"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "is.fitbet.app",
+      "buildNumber": "1",
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "FitBet þarf aðgang að myndavél til að taka sönnunarmyndir af áskorunum.",
+        "NSPhotoLibraryUsageDescription": "FitBet þarf aðgang að myndasafni til að hlaða upp sönnunarmyndum og myndböndum.",
+        "NSPhotoLibraryAddUsageDescription": "FitBet þarf leyfi til að vista myndir.",
+        "NSMicrophoneUsageDescription": "FitBet þarf hljóðnema til að taka sönnunarmyndbönd.",
+        "NSMotionUsageDescription": "FitBet notar hreyfiskynjarann til að rekja líkamsþjálfun.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "is.fitbet.app",
+      "versionCode": 1,
+"adaptiveIcon": {
+  "foregroundImage": "./assets/icon.png",
+  "backgroundColor": "#0a0a0f"
+},
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00e5a0",
+          "defaultChannel": "default",
+          "androidMode": "default",
+          "androidCollapsedTitle": "FitBet"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FitBet þarf aðgang að myndasafni til að hlaða upp sönnunarmyndum.",
+          "cameraPermission": "FitBet þarf aðgang að myndavél til að taka sönnunarmyndir."
+        }
+      ],
+      [
+        "expo-secure-store"
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b521fa2f-ed33-4a86-a63a-5787c27830d5"
+      }
+    },
+    "owner": "fitbet"
+  }
+}

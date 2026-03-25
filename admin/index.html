@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitBet Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg:    #09090e;
+  --bg2:   #0f0f17;
+  --bg3:   #16161f;
+  --bg4:   #1e1e2a;
+  --bg5:   #252533;
+  --accent:#00e5a0;
+  --accent2:#00b87a;
+  --red:   #ff4a6e;
+  --gold:  #ffc940;
+  --blue:  #3d8bff;
+  --purple:#a855f7;
+  --text:  #f0f0f8;
+  --text2: #9090aa;
+  --text3: #5a5a72;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --radius:10px;
+  --radius-lg:14px;
+  --font-display:'Bebas Neue',sans-serif;
+  --font:'DM Sans',sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden;}
+
+/* ── Layout ── */
+.app{display:flex;height:100vh;}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:0;
+}
+.sidebar-logo{
+  padding:20px 20px 16px;
+  font-family:var(--font-display);
+  font-size:26px;letter-spacing:2px;
+  color:var(--accent);
+  border-bottom:1px solid var(--border);
+}
+.sidebar-logo span{color:var(--text3);font-size:13px;font-family:var(--font);font-weight:500;letter-spacing:0;display:block;margin-top:2px;}
+.nav-section{padding:16px 12px 4px;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;margin:1px 8px;
+  border-radius:var(--radius);cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--text2);
+  transition:all 0.15s;
+  position:relative;
+}
+.nav-item:hover{background:var(--bg3);color:var(--text);}
+.nav-item.active{background:rgba(0,229,160,0.1);color:var(--accent);}
+.nav-item .icon{font-size:16px;width:20px;text-align:center;}
+.nav-badge{
+  margin-left:auto;background:var(--red);color:#fff;
+  font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;
+}
+.sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);}
+
+/* ── Main area ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+.topbar{
+  padding:14px 24px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.topbar-title{font-size:18px;font-weight:800;color:var(--text);}
+.topbar-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.btn{
+  padding:8px 16px;border-radius:var(--radius);cursor:pointer;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  border:none;transition:all 0.15s;
+}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);}
+.btn-secondary:hover{color:var(--text);border-color:var(--border2);}
+.btn-danger{background:rgba(255,74,110,0.12);color:var(--red);border:1px solid rgba(255,74,110,0.2);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-gold{background:rgba(255,201,64,0.12);color:var(--gold);border:1px solid rgba(255,201,64,0.2);}
+.btn-blue{background:rgba(61,139,255,0.12);color:var(--blue);border:1px solid rgba(61,139,255,0.2);}
+
+.content{flex:1;overflow-y:auto;padding:24px;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:2px;}
+
+/* ── Panels ── */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ── Stats row ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:16px;
+}
+.stat-card.accent-card{border-color:rgba(0,229,160,0.2);background:rgba(0,229,160,0.04);}
+.stat-card.red-card{border-color:rgba(255,74,110,0.15);}
+.stat-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.stat-num{font-family:var(--font-display);font-size:36px;color:var(--text);line-height:1;}
+.stat-card.accent-card .stat-num{color:var(--accent);}
+.stat-card.red-card .stat-num{color:var(--red);}
+.stat-change{font-size:11px;color:var(--text3);margin-top:4px;}
+.stat-change.up{color:var(--accent);}
+
+/* ── Section header ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title{font-size:13px;font-weight:800;color:var(--text);letter-spacing:0.3px;}
+.section-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* ── Tables ── */
+.table-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:24px;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--bg4);border-bottom:1px solid var(--border);}
+th{padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;}
+td{padding:11px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+td strong{color:var(--text);font-weight:700;}
+.td-actions{display:flex;gap:6px;}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge-green{background:rgba(0,229,160,0.12);color:var(--accent);}
+.badge-red{background:rgba(255,74,110,0.12);color:var(--red);}
+.badge-gold{background:rgba(255,201,64,0.12);color:var(--gold);}
+.badge-blue{background:rgba(61,139,255,0.12);color:var(--blue);}
+.badge-gray{background:rgba(255,255,255,0.07);color:var(--text3);}
+.badge-purple{background:rgba(168,85,247,0.12);color:var(--purple);}
+
+/* ── Modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  display:none;align-items:center;justify-content:center;z-index:100;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:18px;padding:28px;width:100%;max-width:520px;
+  max-height:90vh;overflow-y:auto;
+}
+.modal-title{font-family:var(--font-display);font-size:22px;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--text3);margin-bottom:22px;}
+.form-row{margin-bottom:16px;}
+.form-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px;}
+.form-input{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:10px 14px;
+  color:var(--text);font-family:var(--font);font-size:14px;
+  outline:none;transition:border-color 0.15s;
+}
+.form-input:focus{border-color:var(--accent);}
+select.form-input option{background:var(--bg3);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.modal-footer{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+
+/* ── Settle modal ── */
+.result-btns{display:flex;gap:10px;margin-top:8px;}
+.result-btn{
+  flex:1;padding:12px;border-radius:var(--radius);cursor:pointer;
+  text-align:center;font-weight:700;font-size:13px;
+  border:1.5px solid var(--border2);background:transparent;
+  color:var(--text2);transition:all 0.15s;font-family:var(--font);
+}
+.result-btn:hover,.result-btn.sel{background:var(--bg5);}
+.result-btn.sel-home{border-color:var(--accent);background:rgba(0,229,160,0.1);color:var(--accent);}
+.result-btn.sel-draw{border-color:var(--gold);background:rgba(255,201,64,0.1);color:var(--gold);}
+.result-btn.sel-away{border-color:var(--blue);background:rgba(61,139,255,0.1);color:var(--blue);}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:200;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:10px;padding:12px 18px;
+  font-size:13px;font-weight:600;
+  transform:translateY(60px);opacity:0;
+  transition:all 0.25s;pointer-events:none;
+  max-width:300px;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.toast-success{border-color:rgba(0,229,160,0.3);color:var(--accent);}
+.toast.toast-error{border-color:rgba(255,74,110,0.3);color:var(--red);}
+
+/* ── Market cards ── */
+.markets-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px;}
+.market-card{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:16px;
+}
+.market-card.locked{border-color:rgba(255,201,64,0.2);}
+.market-card.settled{border-color:rgba(0,229,160,0.2);opacity:0.7;}
+.mc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.mc-title{font-weight:800;font-size:14px;color:var(--text);}
+.mc-league{font-size:11px;color:var(--text3);margin-top:2px;}
+.mc-teams{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
+.team-pill{background:var(--bg4);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--text2);}
+.team-pill.winner{background:rgba(0,229,160,0.1);border-color:var(--accent);color:var(--accent);}
+.mc-actions{display:flex;gap:8px;margin-top:12px;}
+
+/* ── Login ── */
+.login-screen{
+  display:flex;align-items:center;justify-content:center;
+  height:100vh;background:var(--bg);
+}
+.login-box{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:18px;padding:32px;width:340px;
+}
+.login-logo{font-family:var(--font-display);font-size:32px;color:var(--accent);letter-spacing:3px;margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--text3);margin-bottom:24px;}
+.login-title{font-size:20px;font-weight:800;margin-bottom:18px;}
+
+/* ── Loading overlay ── */
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  display:none;align-items:center;justify-content:center;z-index:50;
+}
+.loading-overlay.show{display:flex;}
+.spinner{
+  width:40px;height:40px;border-radius:50%;
+  border:3px solid var(--bg4);
+  border-top-color:var(--accent);
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Search ── */
+.search-input{
+  background:var(--bg4);border:1px solid var(--border);
+  border-radius:var(--radius);padding:8px 14px;
+  color:var(--text);font-family:var(--font);font-size:13px;
+  outline:none;width:220px;
+}
+.search-input:focus{border-color:var(--border2);}
+
+/* ── Empty state ── */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text3);}
+.empty-state .icon{font-size:36px;margin-bottom:12px;}
+.empty-state p{font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">FITBET</div>
+    <div class="login-sub">Admin stjórnborð</div>
+    <div class="login-title">Innskráning</div>
+    <div class="form-row">
+      <div class="form-label">NETFANG</div>
+      <input class="form-input" type="email" id="login-email" placeholder="admin@fitbet.is">
+    </div>
+    <div class="form-row">
+      <div class="form-label">LYKILORÐ</div>
+      <input class="form-input" type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:4px" onclick="handleLogin()">
+      Skrá inn
+    </button>
+    <div id="login-error" style="color:#ff4a6e;font-size:12px;margin-top:10px;display:none;text-align:center"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="main-app" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">FITBET<span>Admin Panel</span></div>
+    <div class="nav-section">Yfirlit</div>
+    <div class="nav-item active" onclick="showPanel('dashboard',this)"><span class="icon">📊</span>Mælaborð</div>
+    <div class="nav-section">Leikjastjórnun</div>
+    <div class="nav-item" onclick="showPanel('matches',this)"><span class="icon">⚽</span>Leikir</div>
+    <div class="nav-item" onclick="showPanel('settle',this)"><span class="icon">🏁</span>Gera upp leiki<span class="nav-badge" id="settle-badge">0</span></div>
+    <div class="nav-section">Veðmál</div>
+    <div class="nav-item" onclick="showPanel('markets',this)"><span class="icon">📅</span>Tímabilsmarkaðir</div>
+    <div class="nav-item" onclick="showPanel('bets',this)"><span class="icon">🎯</span>Öll veðmál</div>
+    <div class="nav-section">Notendur</div>
+    <div class="nav-item" onclick="showPanel('users',this)"><span class="icon">👥</span>Notendur</div>
+    <div class="nav-item" onclick="showPanel('challenges',this)"><span class="icon">💪</span>Áskoranir</div>
+    <div class="sidebar-footer" id="sidebar-footer">Hleður...</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Mælaborð</div>
+        <div class="topbar-sub" id="topbar-sub">FitBet Admin · Yfirlit</div>
+      </div>
+      <div class="topbar-actions">
+        <input class="search-input" type="text" placeholder="Leita..." id="global-search" oninput="handleSearch(this.value)">
+        <button class="btn btn-secondary btn-sm" onclick="refreshData()">↻ Uppfæra</button>
+        <button class="btn btn-danger btn-sm" onclick="handleLogout()">Útskrá</button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- DASHBOARD -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card accent-card">
+            <div class="stat-label">Virkir notendur</div>
+            <div class="stat-num" id="stat-users">0</div>
+            <div class="stat-change up" id="stat-users-change">Hleður...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Opin veðmál</div>
+            <div class="stat-num" id="stat-bets">0</div>
+            <div class="stat-change" id="stat-bets-change">Hleður...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Leikir í dag</div>
+            <div class="stat-num" id="stat-matches">0</div>
+            <div class="stat-change" id="stat-matches-note">Þarfnast uppgjörs</div>
+          </div>
+          <div class="stat-card red-card">
+            <div class="stat-label">Opin áskoranir</div>
+            <div class="stat-num" id="stat-challenges">0</div>
+            <div class="stat-change" id="stat-challenges-note">Í bið</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div><div class="section-title">Nýjustu leikir sem þarfnast uppgjörs</div></div>
+          <button class="btn btn-secondary btn-sm" onclick="showPanel('settle', document.querySelector('.nav-item:nth-child(6))'))">Sjá alla →</button>
+        </div>
+        <div class="table-wrap" id="dashboard-matches-table">
+          <div class="empty-state"><div class="icon">⚽</div><p>Hleður leikjum...</p></div>
+        </div>
+
+        <div class="section-header" style="margin-top:8px">
+          <div><div class="section-title">Nýlegir notendur</div></div>
+        </div>
+        <div class="table-wrap" id="dashboard-users-table">
+          <div class="empty-state"><div class="icon">👥</div><p>Hleður notendum...</p></div>
+        </div>
+      </div>
+
+      <!-- MATCHES -->
+      <div class="panel" id="panel-matches">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Leikjastjórnun</div>
+            <div class="section-sub">Bættu við eða breyttu leikjum — aðeins raunveruleg lið leyfð</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddMatchModal()">+ Bæta við leik</button>
+        </div>
+        <div class="table-wrap" id="matches-table">
+          <div class="empty-state"><div class="icon">⚽</div><p>Hleður leikjum...</p></div>
+        </div>
+      </div>
+
+      <!-- SETTLE -->
+      <div class="panel" id="panel-settle">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Gera upp leiki</div>
+            <div class="section-sub">Skráðu niðurstöður — veðmál eru gerð upp sjálfkrafa</div>
+          </div>
+        </div>
+        <div class="table-wrap" id="settle-table">
+          <div class="empty-state"><div class="icon">🏁</div><p>Hleður leikjum...</p></div>
+        </div>
+      </div>
+
+      <!-- MARKETS -->
+      <div class="panel" id="panel-markets">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Tímabilsmarkaðir</div>
+            <div class="section-sub">Búðu til, lokaðu og gerðu upp tímabilsveðmál</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddMarketModal()">+ Nýr markaður</button>
+        </div>
+        <div class="markets-grid" id="markets-grid">
+          <div class="empty-state" style="grid-column:span 2"><div class="icon">📅</div><p>Hleður mörkuðum...</p></div>
+        </div>
+      </div>
+
+      <!-- BETS -->
+      <div class="panel" id="panel-bets">
+        <div class="section-header">
+          <div><div class="section-title">Öll veðmál</div><div class="section-sub">Yfirlit yfir öll virk og lokin veðmál</div></div>
+        </div>
+        <div class="table-wrap" id="bets-table">
+          <div class="empty-state"><div class="icon">🎯</div><p>Hleður veðmálum...</p></div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="panel" id="panel-users">
+        <div class="section-header">
+          <div><div class="section-title">Notendur</div><div class="section-sub">Allir skráðir notendur</div></div>
+        </div>
+        <div class="table-wrap" id="users-table">
+          <div class="empty-state"><div class="icon">👥</div><p>Hleður notendum...</p></div>
+        </div>
+      </div>
+
+      <!-- CHALLENGES -->
+      <div class="panel" id="panel-challenges">
+        <div class="section-header">
+          <div><div class="section-title">Áskoranir</div><div class="section-sub">Allar líkamsþjálfunaráskoranir</div></div>
+        </div>
+        <div class="table-wrap" id="challenges-table">
+          <div class="empty-state"><div class="icon">💪</div><p>Hleður áskorunum...</p></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ADD MATCH MODAL -->
+<div class="modal-overlay" id="add-match-modal">
+  <div class="modal">
+    <div class="modal-title">Bæta við leik</div>
+    <div class="modal-sub">Aðeins raunveruleg lið úr lista leyfð</div>
+    <div class="form-row">
+      <div class="form-label">DEILD</div>
+      <select class="form-input" id="match-league" onchange="filterTeamsByLeague()">
+        <option value="">Veldu deild...</option>
+        <option>Premier League</option>
+        <option>UEFA Champions League</option>
+        <option>Besta deild karla</option>
+        <option>Lengjudeild karla</option>
+        <option>2. deild karla</option>
+      </select>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-label">HEIMALIÐ</div>
+        <select class="form-input" id="match-home"><option value="">Veldu lið...</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">ÚTLIÐ</div>
+        <select class="form-input" id="match-away"><option value="">Veldu lið...</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-label">UPPSPRETTUTÍMI</div>
+      <input class="form-input" type="datetime-local" id="match-kickoff">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-match-modal')">Hætta við</button>
+      <button class="btn btn-primary" onclick="saveMatch()">Vista leik</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTLE MATCH MODAL -->
+<div class="modal-overlay" id="settle-match-modal">
+  <div class="modal">
+    <div class="modal-title">Gera upp leik</div>
+    <div class="modal-sub" id="settle-match-name">Arsenal vs Chelsea</div>
+    <div class="form-row">
+      <div class="form-label">NIÐURSTAÐA LEIKS</div>
+      <div class="result-btns">
+        <button class="result-btn" id="settle-home-btn" onclick="selectResult('home')">Heimalið vinnur</button>
+        <button class="result-btn" id="settle-draw-btn" onclick="selectResult('draw')">Jafntefli</button>
+        <button class="result-btn" id="settle-away-btn" onclick="selectResult('away')">Útlið vinnur</button>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-label">HEIMALIÐ MARKAR</div>
+        <input class="form-input" type="number" id="settle-home-score" min="0" max="20" value="0">
+      </div>
+      <div class="form-row">
+        <div class="form-label">ÚTLIÐ MARKAR</div>
+        <input class="form-input" type="number" id="settle-away-score" min="0" max="20" value="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('settle-match-modal')">Hætta við</button>
+      <button class="btn btn-primary" onclick="confirmSettle()">Gera upp og senda tilkynningar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MARKET MODAL -->
+<div class="modal-overlay" id="add-market-modal">
+  <div class="modal">
+    <div class="modal-title">Nýr tímabilsmarkaður</div>
+    <div class="modal-sub">Búðu til nýjan markað fyrir tímabilsveðmál</div>
+    <div class="form-row">
+      <div class="form-label">TITILL MARKAÐAR</div>
+      <input class="form-input" type="text" id="market-title" placeholder="t.d. Besta deild 2026 – Meistari">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-label">DEILD</div>
+        <select class="form-input" id="market-league">
+          <option>Besta deild karla</option>
+          <option>Lengjudeild karla</option>
+          <option>2. deild karla</option>
+          <option>Premier League</option>
+          <option>UEFA Champions League</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">TEGUND</div>
+        <select class="form-input" id="market-type">
+          <option value="meistari">🏆 Meistari</option>
+          <option value="fellur">⬇ Fellur</option>
+          <option value="fer_upp">⬆ Fer upp</option>
+          <option value="yfir_neðar">⚔ Hvort lið endar ofar</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-label">TÍMABILSÁR</div>
+      <input class="form-input" type="number" id="market-year" value="2026" min="2024" max="2030">
+    </div>
+    <div class="form-row">
+      <div class="form-label">LIÐ Í MARKAÐI (aðskilið með kommu)</div>
+      <input class="form-input" type="text" id="market-teams" placeholder="ÍA, FH, Valur, Breiðablik, KR, Víkingur">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-market-modal')">Hætta við</button>
+      <button class="btn btn-primary" onclick="saveMarket()">Búa til markað</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTLE MARKET MODAL -->
+<div class="modal-overlay" id="settle-market-modal">
+  <div class="modal">
+    <div class="modal-title">Gera upp markað</div>
+    <div class="modal-sub" id="settle-market-name">Besta deild 2026 – Meistari</div>
+    <div class="form-row">
+      <div class="form-label">SIGURLIÐ</div>
+      <select class="form-input" id="settle-market-winner"></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('settle-market-modal')">Hætta við</button>
+      <button class="btn btn-primary" onclick="confirmMarketSettle()">Gera upp</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Supabase config ──────────────────────────────────────────
+// Replace with your actual values
+const SUPABASE_URL  = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON = 'YOUR_ANON_KEY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── State ────────────────────────────────────────────────────
+let allMatches = [], allTeams = [], allMarkets = [], allBets = [], allUsers = [], allChallenges = [];
+let settleMatchId = null, settleResult = null, settleMarketId = null, settleMarketTeams = [];
+let currentPanel = 'dashboard';
+
+// ── AUTH ─────────────────────────────────────────────────────
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  if (!email || !pw) return showLoginError('Fylltu inn netfang og lykilorð');
+  showLoading(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  showLoading(false);
+  if (error) { showLoginError('Rangt netfang eða lykilorð'); return; }
+  bootApp();
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function bootApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  const { data: { user } } = await sb.auth.getUser();
+  document.getElementById('sidebar-footer').textContent = user?.email ?? '';
+  await refreshData();
+}
+
+// Check session on load
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) bootApp();
+});
+
+// ── DATA FETCHING ────────────────────────────────────────────
+async function refreshData() {
+  showLoading(true);
+  await Promise.all([fetchMatches(), fetchTeams(), fetchMarkets(), fetchBets(), fetchUsers(), fetchChallenges()]);
+  renderCurrentPanel();
+  showLoading(false);
+}
+
+async function fetchMatches() {
+  const { data } = await sb.from('matches')
+    .select('*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*)')
+    .order('kickoff_time', { ascending: false });
+  allMatches = data ?? [];
+}
+
+async function fetchTeams() {
+  const { data } = await sb.from('teams').select('*').order('league_name').order('name');
+  allTeams = data ?? [];
+}
+
+async function fetchMarkets() {
+  const { data } = await sb.from('season_markets').select('*, winning_team:teams(*)').order('created_at', { ascending: false });
+  allMarkets = data ?? [];
+}
+
+async function fetchBets() {
+  const { data } = await sb.from('bets')
+    .select('*, match:matches(*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*)), challenger:profiles!challenger_id(*), opponent:profiles!opponent_id(*)')
+    .order('created_at', { ascending: false }).limit(100);
+  allBets = data ?? [];
+}
+
+async function fetchUsers() {
+  const { data } = await sb.from('profiles').select('*').order('total_points', { ascending: false });
+  allUsers = data ?? [];
+}
+
+async function fetchChallenges() {
+  const { data } = await sb.from('challenges')
+    .select('*, loser:profiles!loser_id(*), winner:profiles!winner_id(*)')
+    .order('created_at', { ascending: false }).limit(100);
+  allChallenges = data ?? [];
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function showPanel(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  currentPanel = name;
+  const titles = { dashboard:'Mælaborð', matches:'Leikir', settle:'Gera upp leiki', markets:'Tímabilsmarkaðir', bets:'Öll veðmál', users:'Notendur', challenges:'Áskoranir' };
+  document.getElementById('topbar-title').textContent = titles[name] ?? name;
+  renderCurrentPanel();
+}
+
+function renderCurrentPanel() {
+  if (currentPanel === 'dashboard') renderDashboard();
+  else if (currentPanel === 'matches') renderMatchesTable();
+  else if (currentPanel === 'settle') renderSettleTable();
+  else if (currentPanel === 'markets') renderMarkets();
+  else if (currentPanel === 'bets') renderBetsTable();
+  else if (currentPanel === 'users') renderUsersTable();
+  else if (currentPanel === 'challenges') renderChallengesTable();
+}
+
+// ── RENDER DASHBOARD ─────────────────────────────────────────
+function renderDashboard() {
+  document.getElementById('stat-users').textContent  = allUsers.length;
+  document.getElementById('stat-bets').textContent   = allBets.filter(b => b.status === 'accepted').length;
+  const today = new Date().toDateString();
+  const todayMatches = allMatches.filter(m => new Date(m.kickoff_time).toDateString() === today);
+  document.getElementById('stat-matches').textContent = todayMatches.length;
+  const openCh = allChallenges.filter(c => c.status === 'assigned').length;
+  document.getElementById('stat-challenges').textContent = openCh;
+
+  // Settle badge
+  const needSettle = allMatches.filter(m => m.status === 'upcoming' && new Date(m.kickoff_time) < new Date()).length;
+  document.getElementById('settle-badge').textContent = needSettle;
+
+  // Recent matches needing settle
+  const pending = allMatches.filter(m => m.status === 'upcoming' && new Date(m.kickoff_time) < new Date()).slice(0, 5);
+  const dmEl = document.getElementById('dashboard-matches-table');
+  if (pending.length === 0) {
+    dmEl.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>Engir leikir þurfa uppgjör</p></div>';
+  } else {
+    dmEl.innerHTML = `<table><thead><tr><th>Leikur</th><th>Deild</th><th>Dagsetning</th><th>Aðgerð</th></tr></thead><tbody>
+      ${pending.map(m => `<tr>
+        <td><strong>${m.home_team?.name ?? '?'} vs ${m.away_team?.name ?? '?'}</strong></td>
+        <td><span class="badge badge-blue">${m.league_name}</span></td>
+        <td>${fmtDate(m.kickoff_time)}</td>
+        <td><button class="btn btn-gold btn-sm" onclick="openSettleModal('${m.id}')">Gera upp</button></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+  }
+
+  // Recent users
+  const recent = [...allUsers].slice(0, 5);
+  const duEl = document.getElementById('dashboard-users-table');
+  duEl.innerHTML = `<table><thead><tr><th>Notandi</th><th>Stig</th><th>Sigrar</th><th>Töp</th></tr></thead><tbody>
+    ${recent.map(u => `<tr>
+      <td><strong>${u.full_name ?? u.username}</strong> <span style="color:var(--text3)">@${u.username}</span></td>
+      <td><span style="color:var(--accent);font-weight:700">${u.total_points}</span></td>
+      <td>${u.total_wins}</td>
+      <td>${u.total_losses}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── RENDER MATCHES TABLE ─────────────────────────────────────
+function renderMatchesTable() {
+  const el = document.getElementById('matches-table');
+  if (allMatches.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">⚽</div><p>Engir leikir skráðir ennþá. Bættu við leik!</p></div>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>Heimalið</th><th>Útlið</th><th>Deild</th><th>Uppsprettuími</th><th>Staða</th><th>Aðgerðir</th></tr></thead><tbody>
+    ${allMatches.slice(0, 50).map(m => `<tr>
+      <td><strong>${m.home_team?.name ?? '?'}</strong></td>
+      <td><strong>${m.away_team?.name ?? '?'}</strong></td>
+      <td><span class="badge badge-blue">${m.league_name}</span></td>
+      <td>${fmtDate(m.kickoff_time)}</td>
+      <td>${statusBadge(m.status, m.home_score, m.away_score)}</td>
+      <td class="td-actions">
+        ${m.status === 'upcoming' ? `<button class="btn btn-gold btn-sm" onclick="openSettleModal('${m.id}')">Gera upp</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteMatch('${m.id}')">Eyða</button>
+      </td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── RENDER SETTLE TABLE ──────────────────────────────────────
+function renderSettleTable() {
+  const pending = allMatches.filter(m => m.status === 'upcoming' && new Date(m.kickoff_time) < new Date());
+  const upcoming = allMatches.filter(m => m.status === 'upcoming' && new Date(m.kickoff_time) >= new Date());
+  const all = [...pending, ...upcoming].slice(0, 40);
+  const el = document.getElementById('settle-table');
+  if (all.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🏁</div><p>Engir leikir bíða uppgjörs</p></div>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>Leikur</th><th>Deild</th><th>Tími</th><th>Staða</th><th>Aðgerð</th></tr></thead><tbody>
+    ${all.map(m => {
+      const isPast = new Date(m.kickoff_time) < new Date();
+      return `<tr>
+        <td><strong>${m.home_team?.name ?? '?'} vs ${m.away_team?.name ?? '?'}</strong></td>
+        <td><span class="badge badge-blue">${m.league_name}</span></td>
+        <td>${fmtDate(m.kickoff_time)}</td>
+        <td>${isPast ? '<span class="badge badge-red">Þarf uppgjör</span>' : '<span class="badge badge-gray">Ókominn</span>'}</td>
+        <td>${isPast ? `<button class="btn btn-primary btn-sm" onclick="openSettleModal('${m.id}')">Gera upp</button>` : '<span style="color:var(--text3);font-size:12px">Bíður...</span>'}</td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+// ── RENDER MARKETS ───────────────────────────────────────────
+function renderMarkets() {
+  const el = document.getElementById('markets-grid');
+  if (allMarkets.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:span 2"><div class="icon">📅</div><p>Engir markaðir ennþá</p></div>';
+    return;
+  }
+  const typeLabels = { meistari:'🏆 Meistari', fellur:'⬇ Fellur', fer_upp:'⬆ Fer upp', yfir_neðar:'⚔ Hvort lið' };
+  el.innerHTML = allMarkets.map(m => {
+    const teams = (m.available_teams ?? []);
+    const statusClass = m.status === 'locked' ? 'locked' : m.status === 'settled' ? 'settled' : '';
+    const statusBadgeHtml = m.status === 'open'
+      ? '<span class="badge badge-green">Opinn</span>'
+      : m.status === 'locked'
+      ? '<span class="badge badge-gold">Læstur</span>'
+      : '<span class="badge badge-gray">Gert upp</span>';
+    return `<div class="market-card ${statusClass}">
+      <div class="mc-top">
+        <div>
+          <div class="mc-title">${m.title}</div>
+          <div class="mc-league">${m.league_name} · ${m.season_year}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          ${statusBadgeHtml}
+          <span class="badge badge-purple">${typeLabels[m.market_type] ?? m.market_type}</span>
+        </div>
+      </div>
+      <div class="mc-teams">
+        ${teams.map(t => `<span class="team-pill ${m.winning_team?.id === t ? 'winner' : ''}">${t}</span>`).join('')}
+      </div>
+      ${m.winning_team ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">✓ Sigurlið: <strong>${m.winning_team.name}</strong></div>` : ''}
+      <div class="mc-actions">
+        ${m.status === 'open' ? `<button class="btn btn-gold btn-sm" onclick="lockMarket('${m.id}')">Læsa</button>` : ''}
+        ${m.status === 'locked' ? `<button class="btn btn-primary btn-sm" onclick="openSettleMarket('${m.id}')">Gera upp</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteMarket('${m.id}')">Eyða</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER BETS ──────────────────────────────────────────────
+function renderBetsTable() {
+  const el = document.getElementById('bets-table');
+  const predLabel = { home:'Heimalið', draw:'Jafntefli', away:'Útlið' };
+  el.innerHTML = `<table><thead><tr><th>Leikur</th><th>Kappar</th><th>Spá</th><th>Staða</th><th>Deild</th></tr></thead><tbody>
+    ${allBets.slice(0,60).map(b => `<tr>
+      <td><strong>${b.match?.home_team?.short_name ?? '?'} vs ${b.match?.away_team?.short_name ?? '?'}</strong></td>
+      <td>${b.challenger?.username ?? '?'} vs ${b.opponent?.username ?? '?'}</td>
+      <td><span class="badge badge-blue">${predLabel[b.challenger_prediction] ?? '?'}</span></td>
+      <td>${betStatusBadge(b.status)}</td>
+      <td>${b.match?.league_name ?? '?'}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── RENDER USERS ─────────────────────────────────────────────
+function renderUsersTable() {
+  const el = document.getElementById('users-table');
+  el.innerHTML = `<table><thead><tr><th>Notandi</th><th>Netfang</th><th>Stig</th><th>Sigrar</th><th>Töp</th><th>Strava</th></tr></thead><tbody>
+    ${allUsers.map(u => `<tr>
+      <td><strong>${u.full_name ?? ''}</strong> <span style="color:var(--text3)">@${u.username}</span></td>
+      <td style="color:var(--text3)">${u.city ?? '—'}</td>
+      <td><strong style="color:var(--accent)">${u.total_points}</strong></td>
+      <td>${u.total_wins}</td>
+      <td>${u.total_losses}</td>
+      <td>${u.strava_connected ? '<span class="badge badge-green">⚡ Tengt</span>' : '<span class="badge badge-gray">Ekki tengt</span>'}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── RENDER CHALLENGES ────────────────────────────────────────
+function renderChallengesTable() {
+  const el = document.getElementById('challenges-table');
+  const exLabels = { hlaup:'🏃 Hlaup', armbeygjur:'💪 Armbeygjur', hnébeygjur:'🦵 Hnébeygjur', burpees:'🔥 Burpees', hjólreiðar:'🚴 Hjólreiðar', planki:'🧱 Planki' };
+  el.innerHTML = `<table><thead><tr><th>Æfing</th><th>Magn</th><th>Tapari</th><th>Sigurvegari</th><th>Staða</th><th>Dagsetning</th></tr></thead><tbody>
+    ${allChallenges.slice(0,60).map(c => `<tr>
+      <td>${exLabels[c.exercise] ?? c.exercise}</td>
+      <td><strong>${c.amount} ${c.unit}</strong></td>
+      <td>${c.loser?.username ?? '?'}</td>
+      <td>${c.winner?.username ?? '?'}</td>
+      <td>${challengeStatusBadge(c.status)}</td>
+      <td style="color:var(--text3)">${fmtDate(c.created_at)}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── MATCH ACTIONS ────────────────────────────────────────────
+function openAddMatchModal() {
+  filterTeamsByLeague();
+  // Set default kickoff to tomorrow 18:00
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(18,0,0,0);
+  document.getElementById('match-kickoff').value = d.toISOString().slice(0,16);
+  openModal('add-match-modal');
+}
+
+function filterTeamsByLeague() {
+  const league = document.getElementById('match-league').value;
+  const filtered = league ? allTeams.filter(t => t.league_name === league) : allTeams;
+  ['match-home','match-away'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">Veldu lið...</option>' +
+      filtered.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  });
+}
+
+async function saveMatch() {
+  const league  = document.getElementById('match-league').value;
+  const homeId  = document.getElementById('match-home').value;
+  const awayId  = document.getElementById('match-away').value;
+  const kickoff = document.getElementById('match-kickoff').value;
+  if (!league || !homeId || !awayId || !kickoff) return toast('Fylltu inn alla reiti', 'error');
+  if (homeId === awayId) return toast('Heimalia og útlið mega ekki vera sama lið', 'error');
+  showLoading(true);
+  const { error } = await sb.from('matches').insert({
+    home_team_id: homeId, away_team_id: awayId,
+    league_name: league,
+    kickoff_time: new Date(kickoff).toISOString(),
+    status: 'upcoming',
+  });
+  showLoading(false);
+  if (error) { toast('Villa: ' + error.message, 'error'); return; }
+  closeModal('add-match-modal');
+  await fetchMatches();
+  renderCurrentPanel();
+  toast('Leikur vistaður! ⚽');
+}
+
+async function deleteMatch(id) {
+  if (!confirm('Ertu viss? Þetta eyðir leiknum og öllum tengdum veðmálum.')) return;
+  showLoading(true);
+  await sb.from('matches').delete().eq('id', id);
+  showLoading(false);
+  await fetchMatches();
+  renderCurrentPanel();
+  toast('Leikur eytt');
+}
+
+// ── SETTLE MATCH ─────────────────────────────────────────────
+function openSettleModal(matchId) {
+  settleMatchId = matchId; settleResult = null;
+  const m = allMatches.find(x => x.id === matchId);
+  if (!m) return;
+  document.getElementById('settle-match-name').textContent = `${m.home_team?.name ?? '?'} vs ${m.away_team?.name ?? '?'}`;
+  document.getElementById('settle-home-btn').textContent = m.home_team?.name ?? 'Heimalið';
+  document.getElementById('settle-away-btn').textContent = m.away_team?.name ?? 'Útlið';
+  ['settle-home-btn','settle-draw-btn','settle-away-btn'].forEach(id => {
+    document.getElementById(id).className = 'result-btn';
+  });
+  document.getElementById('settle-home-score').value = '0';
+  document.getElementById('settle-away-score').value = '0';
+  openModal('settle-match-modal');
+}
+
+function selectResult(r) {
+  settleResult = r;
+  document.getElementById('settle-home-btn').className = 'result-btn' + (r==='home'?' sel-home':'');
+  document.getElementById('settle-draw-btn').className = 'result-btn' + (r==='draw'?' sel-draw':'');
+  document.getElementById('settle-away-btn').className = 'result-btn' + (r==='away'?' sel-away':'');
+  // Auto-fill scores
+  const hs = parseInt(document.getElementById('settle-home-score').value)||0;
+  const as = parseInt(document.getElementById('settle-away-score').value)||0;
+  if (r==='home' && hs <= as) { document.getElementById('settle-home-score').value=1; document.getElementById('settle-away-score').value=0; }
+  if (r==='draw') { const s=Math.max(hs,as); document.getElementById('settle-home-score').value=s; document.getElementById('settle-away-score').value=s; }
+  if (r==='away' && as <= hs) { document.getElementById('settle-away-score').value=1; document.getElementById('settle-home-score').value=0; }
+}
+
+async function confirmSettle() {
+  if (!settleResult) return toast('Veldu niðurstöðu leiks', 'error');
+  const hs = parseInt(document.getElementById('settle-home-score').value)||0;
+  const as = parseInt(document.getElementById('settle-away-score').value)||0;
+  showLoading(true);
+  // 1. Update match
+  await sb.from('matches').update({ status:'finished', result:settleResult, home_score:hs, away_score:as }).eq('id', settleMatchId);
+  // 2. Settle all bets for this match via RPC
+  const { data: betIds } = await sb.from('bets').select('id').eq('match_id', settleMatchId).eq('status','accepted');
+  for (const b of (betIds ?? [])) {
+    await sb.rpc('settle_bet', { p_bet_id: b.id, p_match_result: settleResult });
+  }
+  showLoading(false);
+  closeModal('settle-match-modal');
+  await fetchMatches(); await fetchBets();
+  renderCurrentPanel();
+  toast(`Leikur gerður upp! ${(betIds??[]).length} veðmál uppgerð 🏆`);
+}
+
+// ── SEASON MARKET ACTIONS ────────────────────────────────────
+function openAddMarketModal() {
+  document.getElementById('market-title').value = '';
+  document.getElementById('market-teams').value = '';
+  openModal('add-market-modal');
+}
+
+async function saveMarket() {
+  const title  = document.getElementById('market-title').value.trim();
+  const league = document.getElementById('market-league').value;
+  const type   = document.getElementById('market-type').value;
+  const year   = parseInt(document.getElementById('market-year').value);
+  const teamsRaw = document.getElementById('market-teams').value;
+  const teams  = teamsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  if (!title || !league || teams.length < 2) return toast('Fylltu inn alla reiti (a.m.k. 2 lið)', 'error');
+  showLoading(true);
+  const { error } = await sb.from('season_markets').insert({
+    title, league_name: league, market_type: type,
+    season_year: year, available_teams: teams, status: 'open',
+  });
+  showLoading(false);
+  if (error) { toast('Villa: ' + error.message, 'error'); return; }
+  closeModal('add-market-modal');
+  await fetchMarkets();
+  renderCurrentPanel();
+  toast('Markaður búinn til! 📅');
+}
+
+async function lockMarket(id) {
+  if (!confirm('Læsa þennan markað? Engin ný veðmál verða tekin á móti.')) return;
+  showLoading(true);
+  await sb.from('season_markets').update({ status: 'locked' }).eq('id', id);
+  showLoading(false);
+  await fetchMarkets();
+  renderCurrentPanel();
+  toast('Markaður læstur 🔒');
+}
+
+function openSettleMarket(id) {
+  settleMarketId = id;
+  const m = allMarkets.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('settle-market-name').textContent = m.title;
+  const teams = (m.available_teams ?? []);
+  const winnerSel = document.getElementById('settle-market-winner');
+  winnerSel.innerHTML = '<option value="">Veldu sigurlið...</option>';
+  // Find team ids from teams table
+  teams.forEach(teamName => {
+    const t = allTeams.find(x => x.name === teamName || x.short_name === teamName);
+    if (t) winnerSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+    else winnerSel.innerHTML += `<option value="${teamName}">${teamName}</option>`;
+  });
+  openModal('settle-market-modal');
+}
+
+async function confirmMarketSettle() {
+  const winnerId = document.getElementById('settle-market-winner').value;
+  if (!winnerId) return toast('Veldu sigurlið', 'error');
+  showLoading(true);
+  await sb.from('season_markets').update({ status:'settled', winning_team_id: winnerId }).eq('id', settleMarketId);
+  // Settle season bets
+  const { data: sBets } = await sb.from('season_bets').select('*').eq('market_id', settleMarketId).eq('status','accepted');
+  for (const b of (sBets ?? [])) {
+    const winnerId2 = b.challenger_pick === winnerId ? b.challenger_id : b.opponent_pick === winnerId ? b.opponent_id : null;
+    const loserId  = winnerId2 ? (winnerId2 === b.challenger_id ? b.opponent_id : b.challenger_id) : null;
+    if (winnerId2) {
+      await sb.from('season_bets').update({ status:'settled', winner_id:winnerId2, loser_id:loserId }).eq('id',b.id);
+      await sb.from('profiles').update({ total_points: sb.rpc('increment', {x:5}) }).eq('id', winnerId2);
+    }
+  }
+  showLoading(false);
+  closeModal('settle-market-modal');
+  await fetchMarkets();
+  renderCurrentPanel();
+  toast(`Markaður gerður upp! ${(sBets??[]).length} tímabilsveðmál uppgerð 🏆`);
+}
+
+async function deleteMarket(id) {
+  if (!confirm('Eyða þessum markaði?')) return;
+  showLoading(true);
+  await sb.from('season_markets').delete().eq('id', id);
+  showLoading(false);
+  await fetchMarkets();
+  renderCurrentPanel();
+  toast('Markaður eytt');
+}
+
+// ── SEARCH ───────────────────────────────────────────────────
+function handleSearch(val) {
+  if (!val) return;
+  // Simple highlight in current table
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showLoading(v) { document.getElementById('loading').classList.toggle('show', v); }
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show toast-' + type;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('is-IS', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+function statusBadge(status, hs, as) {
+  if (status==='finished') return `<span class="badge badge-gray">Lokið ${hs}–${as}</span>`;
+  if (status==='live')     return '<span class="badge badge-red">🔴 LIVE</span>';
+  if (status==='upcoming') {
+    const past = new Date(arguments[0]) < new Date();
+    return past ? '<span class="badge badge-gold">Þarf uppgjör</span>' : '<span class="badge badge-blue">Ókominn</span>';
+  }
+  return '<span class="badge badge-gray">' + status + '</span>';
+}
+
+// Override statusBadge to accept match object
+function statusBadge(status) {
+  if (status==='finished') return '<span class="badge badge-gray">Lokið</span>';
+  if (status==='live')     return '<span class="badge badge-red">🔴 LIVE</span>';
+  if (status==='upcoming') return '<span class="badge badge-blue">Ókominn</span>';
+  return '<span class="badge badge-gray">' + status + '</span>';
+}
+
+function betStatusBadge(s) {
+  const map = { pending:'badge-gold', accepted:'badge-blue', settled:'badge-green', declined:'badge-gray', cancelled:'badge-red' };
+  const labels = { pending:'Í bið', accepted:'Virkt', settled:'Gert upp', declined:'Hafnað', cancelled:'Aflýst' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
+}
+
+function challengeStatusBadge(s) {
+  const map = { assigned:'badge-red', submitted:'badge-gold', approved:'badge-green', rejected:'badge-gray' };
+  const labels = { assigned:'Óklárað', submitted:'Í yfirferð', approved:'Klárað ✓', rejected:'Hafnað' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// Enter key on login
+document.getElementById('login-password')?.addEventListener('keydown', e => { if (e.key==='Enter') handleLogin(); });
+</script>
+</body>
+</html>

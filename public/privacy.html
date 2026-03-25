@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitBet — Persónuverndarstefna</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+  :root {
+    --bg:     #0a0a0f;
+    --bg2:    #111118;
+    --bg3:    #1a1a24;
+    --accent: #00e5a0;
+    --text:   #f0f0f8;
+    --text2:  #9090aa;
+    --text3:  #5a5a72;
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo {
+    font-size: 22px; font-weight: 900;
+    color: var(--accent); letter-spacing: 3px;
+  }
+  .lang-btns { display: flex; gap: 8px; }
+  .lang-btn {
+    padding: 5px 14px; border-radius: 20px; cursor: pointer;
+    font-size: 12px; font-weight: 700; border: 1px solid var(--border);
+    background: transparent; color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .lang-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .container {
+    max-width: 720px; margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  .badge {
+    display: inline-flex; align-items: center;
+    background: rgba(0,229,160,0.1); color: var(--accent);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 5px 12px; border-radius: 20px;
+    border: 1px solid rgba(0,229,160,0.2);
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 36px; font-weight: 900; margin-bottom: 8px; line-height: 1.15; }
+  .meta { font-size: 13px; color: var(--text3); margin-bottom: 40px; }
+  h2 {
+    font-size: 18px; font-weight: 800; margin: 36px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  h2::before {
+    content: attr(data-num);
+    color: var(--accent); margin-right: 8px; font-size: 14px;
+  }
+  p { color: var(--text2); margin-bottom: 14px; }
+  ul { color: var(--text2); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; }
+  .highlight-box {
+    background: rgba(0,229,160,0.06);
+    border: 1px solid rgba(0,229,160,0.15);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .highlight-box p { color: var(--text); margin: 0; font-weight: 500; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .contact-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-top: 16px;
+  }
+  .contact-card p { margin: 4px 0; color: var(--text2); }
+  .contact-card strong { color: var(--text); }
+  .footer {
+    text-align: center; margin-top: 60px;
+    padding-top: 24px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text3);
+  }
+  .lang-section { display: none; }
+  .lang-section.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">FITBET</div>
+  <div class="lang-btns">
+    <button class="lang-btn active" onclick="setLang('is')">Íslenska</button>
+    <button class="lang-btn" onclick="setLang('en')">English</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── ICELANDIC ── -->
+  <div class="lang-section active" id="lang-is">
+    <div class="badge">Persónuverndarstefna</div>
+    <h1>Við hlöldverjum persónuupplýsingunum þínum</h1>
+    <div class="meta">Síðast uppfært: 20. mars 2026 · Gildir fyrir FitBet iOS og Android app</div>
+
+    <div class="highlight-box">
+      <p>FitBet selur aldrei persónuupplýsingar þínar til þriðja aðila og notar þær aldrei í auglýsingar. Appið er persónuverndarsætt í höfuðið.</p>
+    </div>
+
+    <h2 data-num="1.">Hvaða gögn við söfnum</h2>
+    <p>Við söfnum eftirfarandi gögnum þegar þú notar FitBet:</p>
+    <ul>
+      <li><strong>Reikningsgögn:</strong> Notandanafn, netfang, lykilorð (geymt dulkóðað af Supabase Auth)</li>
+      <li><strong>Prófílgögn:</strong> Fullt nafn (valfrjálst), borg (valfrjálst), prófílmynd (valfrjálst)</li>
+      <li><strong>Veðmálagögn:</strong> Spár þínar, niðurstöður veðmála, stig</li>
+      <li><strong>Sönnunargögn:</strong> Myndir og myndbönd sem þú hleður upp til sönnunar á áskorunum</li>
+      <li><strong>Push token:</strong> Tæknilegt auðkenni til að senda þér tilkynningar</li>
+      <li><strong>Strava gögn</strong> (ef þú tengir): Æfingatenglar og fjarlægðargögn til staðfestingar á áskorunum</li>
+    </ul>
+
+    <h2 data-num="2.">Hvernig við notum gögnin</h2>
+    <p>Við notum gögnin þín eingöngu til:</p>
+    <ul>
+      <li>Að reka FitBet appið og veita þjónustuna</li>
+      <li>Að senda þér tilkynningar um veðmál og áskoranir</li>
+      <li>Að sýna stigatöflu og veðmálaferil</li>
+      <li>Að staðfesta áskoranir sjálfkrafa í gegnum Strava (ef tengt)</li>
+    </ul>
+    <p>Við notum gögnin þín <strong>aldrei</strong> til auglýsinga, gervigreind þjálfunar, eða sölu til þriðja aðila.</p>
+
+    <h2 data-num="3.">Geymsla og öryggi</h2>
+    <p>Öll gögn eru geymd á öruggum netþjónum Supabase innan Evrópusambandsins (Írland). Við notum:</p>
+    <ul>
+      <li>TLS dulkóðun fyrir alla gagnaflutninga</li>
+      <li>bcrypt dulkóðun fyrir lykilorð</li>
+      <li>Row-Level Security (RLS) — notendur geta aðeins séð eigin gögn</li>
+      <li>Expo SecureStore fyrir push tokens í símanum</li>
+    </ul>
+
+    <h2 data-num="4.">Sönnunarmyndir og myndbönd</h2>
+    <p>Myndir og myndbönd sem þú hleður upp eru eingöngu sýnd þeim vini sem þarf að samþykkja áskorunina þína. Þær eru ekki opinberar og ekki aðgengilegar öðrum notendum.</p>
+
+    <h2 data-num="5.">Strava tenging</h2>
+    <p>Ef þú velur að tengja Strava reikninginn þinn:</p>
+    <ul>
+      <li>Við sækjum eingöngu æfingatengla og fjarlægðargögn til að staðfesta áskoranir</li>
+      <li>Við geymum aldrei heildaræfingaferil þinn</li>
+      <li>Þú getur aftengt Strava hvenær sem er í Prófíll → Stillingar</li>
+    </ul>
+
+    <h2 data-num="6.">Réttindi þín</h2>
+    <p>Þú átt rétt á:</p>
+    <ul>
+      <li><strong>Aðgangi:</strong> Sjá hvaða gögn við geymum um þig</li>
+      <li><strong>Leiðréttingu:</strong> Uppfæra rangar upplýsingar</li>
+      <li><strong>Eyðingu:</strong> Eyða reikningnum og öllum gögnum að fullu</li>
+      <li><strong>Flutningi:</strong> Fá gögn þín á læsilegu formi</li>
+    </ul>
+    <p>Til að eyða reikningnum: Prófíll → Stillingar → Eyða reikningi. Öll gögn eru eyðd að fullu innan 30 daga.</p>
+
+    <h2 data-num="7.">Kökur og rekjanleiki</h2>
+    <p>FitBet appið notar engar markaðskökur og rekur þig ekki milli annarra appa eða vefsvæða. Við notum engin þriðja aðila greiningartæki eins og Google Analytics eða Facebook Pixel.</p>
+
+    <h2 data-num="8.">Börn</h2>
+    <p>FitBet er ekki ætlað börnum undir 12 ára aldri. Við söfnum ekki meðvitað gögnum frá börnum. Ef þú telur barn hafa búið til reikning, hafðu samband við okkur strax.</p>
+
+    <h2 data-num="9.">Breytingar á stefnunni</h2>
+    <p>Við munum tilkynna þér um verulegar breytingar á þessari stefnu í gegnum appið eða með tölvupósti. Dagsetning efst á þessari síðu sýnir hvenær hún var síðast uppfærð.</p>
+
+    <h2 data-num="10.">Hafa samband</h2>
+    <p>Spurningar um persónuvernd? Við svörum innan 48 klukkustunda.</p>
+    <div class="contact-card">
+      <p><strong>FitBet ehf.</strong></p>
+      <p>Netfang: <a href="/cdn-cgi/l/email-protection#7000021906111309301619041215045e1903"><span class="__cf_email__" data-cfemail="a8d8dac1dec9cbd1e8cec1dccacddc86c1db">[email&#160;protected]</span></a></p>
+      <p>Stuðningur: <a href="/cdn-cgi/l/email-protection#8efdfbfefee1fcfacee8e7faecebfaa0e7fd"><span class="__cf_email__" data-cfemail="e3909693938c9197a3858a97818697cd8a90">[email&#160;protected]</span></a></p>
+      <p>Vefur: <a href="https://fitbet.is">fitbet.is</a></p>
+    </div>
+  </div>
+
+  <!-- ── ENGLISH ── -->
+  <div class="lang-section" id="lang-en">
+    <div class="badge">Privacy Policy</div>
+    <h1>We protect your personal information</h1>
+    <div class="meta">Last updated: March 20, 2026 · Applies to FitBet iOS and Android app</div>
+
+    <div class="highlight-box">
+      <p>FitBet never sells your personal information to third parties and never uses it for advertising. The app is privacy-first by design.</p>
+    </div>
+
+    <h2 data-num="1.">What data we collect</h2>
+    <p>We collect the following data when you use FitBet:</p>
+    <ul>
+      <li><strong>Account data:</strong> Username, email address, password (stored encrypted by Supabase Auth)</li>
+      <li><strong>Profile data:</strong> Full name (optional), city (optional), profile picture (optional)</li>
+      <li><strong>Bet data:</strong> Your predictions, bet outcomes, points</li>
+      <li><strong>Proof data:</strong> Photos and videos you upload as proof for challenges</li>
+      <li><strong>Push token:</strong> A technical identifier to send you notifications</li>
+      <li><strong>Strava data</strong> (if connected): Activity links and distance data to verify challenges</li>
+    </ul>
+
+    <h2 data-num="2.">How we use your data</h2>
+    <p>We use your data solely to:</p>
+    <ul>
+      <li>Operate the FitBet app and provide the service</li>
+      <li>Send you notifications about bets and challenges</li>
+      <li>Display leaderboards and bet history</li>
+      <li>Automatically verify challenges through Strava (if connected)</li>
+    </ul>
+    <p>We <strong>never</strong> use your data for advertising, AI training, or sale to third parties.</p>
+
+    <h2 data-num="3.">Storage and security</h2>
+    <p>All data is stored on secure Supabase servers within the European Union (Ireland). We use:</p>
+    <ul>
+      <li>TLS encryption for all data transfers</li>
+      <li>bcrypt encryption for passwords</li>
+      <li>Row-Level Security (RLS) — users can only access their own data</li>
+      <li>Expo SecureStore for push tokens on device</li>
+    </ul>
+
+    <h2 data-num="4.">Proof photos and videos</h2>
+    <p>Photos and videos you upload are only shown to the friend who needs to approve your challenge. They are not public and not accessible to other users.</p>
+
+    <h2 data-num="5.">Strava connection</h2>
+    <p>If you choose to connect your Strava account:</p>
+    <ul>
+      <li>We only fetch activity links and distance data to verify challenges</li>
+      <li>We never store your full activity history</li>
+      <li>You can disconnect Strava at any time in Profile → Settings</li>
+    </ul>
+
+    <h2 data-num="6.">Your rights</h2>
+    <p>You have the right to:</p>
+    <ul>
+      <li><strong>Access:</strong> See what data we store about you</li>
+      <li><strong>Correction:</strong> Update incorrect information</li>
+      <li><strong>Deletion:</strong> Delete your account and all data permanently</li>
+      <li><strong>Portability:</strong> Receive your data in a readable format</li>
+    </ul>
+    <p>To delete your account: Profile → Settings → Delete Account. All data is permanently deleted within 30 days.</p>
+
+    <h2 data-num="7.">Cookies and tracking</h2>
+    <p>The FitBet app uses no marketing cookies and does not track you across other apps or websites. We use no third-party analytics tools such as Google Analytics or Facebook Pixel.</p>
+
+    <h2 data-num="8.">Children</h2>
+    <p>FitBet is not intended for children under 12 years of age. We do not knowingly collect data from children. If you believe a child has created an account, please contact us immediately.</p>
+
+    <h2 data-num="9.">Changes to this policy</h2>
+    <p>We will notify you of significant changes to this policy through the app or by email. The date at the top of this page shows when it was last updated.</p>
+
+    <h2 data-num="10.">Contact us</h2>
+    <p>Questions about privacy? We respond within 48 hours.</p>
+    <div class="contact-card">
+      <p><strong>FitBet ehf.</strong></p>
+      <p>Email: <a href="/cdn-cgi/l/email-protection#1666647f6077756f56707f62747362387f65"><span class="__cf_email__" data-cfemail="2252504b5443415b62444b564047560c4b51">[email&#160;protected]</span></a></p>
+      <p>Support: <a href="/cdn-cgi/l/email-protection#384b4d4848574a4c785e514c5a5d4c16514b"><span class="__cf_email__" data-cfemail="3e4d4b4e4e514c4a7e58574a5c5b4a10574d">[email&#160;protected]</span></a></p>
+      <p>Website: <a href="https://fitbet.is">fitbet.is</a></p>
+    </div>
+  </div>
+
+  <div class="footer"

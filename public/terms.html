@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitBet — Notkunarskilmálar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+  :root {
+    --bg:     #0a0a0f;
+    --bg2:    #111118;
+    --bg3:    #1a1a24;
+    --accent: #00e5a0;
+    --text:   #f0f0f8;
+    --text2:  #9090aa;
+    --text3:  #5a5a72;
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { font-size: 22px; font-weight: 900; color: var(--accent); letter-spacing: 3px; }
+  .topbar-links { display: flex; gap: 20px; align-items: center; }
+  .topbar-link { font-size: 13px; color: var(--text2); text-decoration: none; font-weight: 600; }
+  .topbar-link.active { color: var(--accent); }
+  .lang-btns { display: flex; gap: 8px; }
+  .lang-btn {
+    padding: 5px 14px; border-radius: 20px; cursor: pointer;
+    font-size: 12px; font-weight: 700; border: 1px solid var(--border);
+    background: transparent; color: var(--text2);
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+  .lang-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .container { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+  .badge {
+    display: inline-flex;
+    background: rgba(61,139,255,0.1); color: #3d8bff;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 5px 12px; border-radius: 20px;
+    border: 1px solid rgba(61,139,255,0.2); margin-bottom: 16px;
+  }
+  h1 { font-size: 36px; font-weight: 900; margin-bottom: 8px; line-height: 1.15; }
+  .meta { font-size: 13px; color: var(--text3); margin-bottom: 40px; }
+  h2 {
+    font-size: 18px; font-weight: 800; margin: 36px 0 12px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); color: var(--text);
+  }
+  h2::before { content: attr(data-num); color: #3d8bff; margin-right: 8px; font-size: 14px; }
+  p { color: var(--text2); margin-bottom: 14px; }
+  ul { color: var(--text2); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; }
+  .warning-box {
+    background: rgba(255,74,110,0.06);
+    border: 1px solid rgba(255,74,110,0.2);
+    border-radius: 12px; padding: 16px 20px; margin: 20px 0;
+  }
+  .warning-box p { color: var(--text); margin: 0; font-weight: 500; }
+  .info-box {
+    background: rgba(61,139,255,0.06);
+    border: 1px solid rgba(61,139,255,0.15);
+    border-radius: 12px; padding: 16px 20px; margin: 20px 0;
+  }
+  .info-box p { color: var(--text); margin: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .contact-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 24px; margin-top: 16px;
+  }
+  .contact-card p { margin: 4px 0; color: var(--text2); }
+  .contact-card strong { color: var(--text); }
+  .footer {
+    text-align: center; margin-top: 60px;
+    padding-top: 24px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text3);
+  }
+  .lang-section { display: none; }
+  .lang-section.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:24px">
+    <div class="logo">FITBET</div>
+    <div class="topbar-links">
+      <a href="/privacy" class="topbar-link">Persónuvernd</a>
+      <a href="/terms" class="topbar-link active">Skilmálar</a>
+    </div>
+  </div>
+  <div class="lang-btns">
+    <button class="lang-btn active" onclick="setLang('is')">Íslenska</button>
+    <button class="lang-btn" onclick="setLang('en')">English</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── ICELANDIC ── -->
+  <div class="lang-section active" id="lang-is">
+    <div class="badge">Notkunarskilmálar</div>
+    <h1>Skilmálar fyrir notkun FitBet</h1>
+    <div class="meta">Síðast uppfært: 20. mars 2026 · Með skráningu samþykkir þú þessa skilmála</div>
+
+    <div class="info-box">
+      <p>FitBet er skemmtilegt samfélagsapp þar sem vinir keppa í íþróttaspám. Engin peningaleg veðmál eiga sér stað. Appið er byggt á líkamsþjálfunaráskorunum, ekki fjárhagslegum hvötum.</p>
+    </div>
+
+    <h2 data-num="1.">Skilgreiningar</h2>
+    <ul>
+      <li><strong>FitBet / við / okkur:</strong> FitBet ehf., þróendur og rekstraraðilar appsins</li>
+      <li><strong>Notandi / þú:</strong> Einstaklingur sem skráir sig og notar FitBet</li>
+      <li><strong>Veðmál:</strong> Samningur milli tveggja notenda um spá á íþróttaniðurstöðu — enginn peningur er á í leik</li>
+      <li><strong>Áskorun:</strong> Líkamsþjálfunarverkefni sem tapari veðmáls þarf að klára</li>
+    </ul>
+
+    <h2 data-num="2.">Hvernig þjónustan virkar</h2>
+    <p>FitBet er leikjaapp þar sem vinir:</p>
+    <ul>
+      <li>Veðja um niðurstöður íþróttaleikja — <strong>enginn peningur</strong> er á í leik</li>
+      <li>Sá sem tapar þarf að klára líkamsþjálfunaráskorun</li>
+      <li>Tapari hleður upp mynd eða myndband sem sönnun</li>
+      <li>Sigurvegari staðfestir sönnunina</li>
+    </ul>
+
+    <div class="warning-box">
+      <p>⚠ FitBet er EKKI fjárhagsleg veðmálasíða. Engin peningur, kreditkort, eða fjárhagsleg verðmæti eru hluti af þjónustunni. Þetta er líkamsþjálfunar- og samfélagsapp.</p>
+    </div>
+
+    <h2 data-num="3.">Skráning og reikningur</h2>
+    <ul>
+      <li>Þú verður að vera að minnsta kosti 12 ára til að nota FitBet</li>
+      <li>Þú ber ábyrgð á öryggi reikningsins þíns og lykilorðsins</li>
+      <li>Þú mátt aðeins búa til einn reikning</li>
+      <li>Notandanafnið þitt má ekki vera villandi, niðurlægjandi eða ósæmilegt</li>
+      <li>Þú ber ábyrgð á öllu sem gert er í gegnum reikninginn þinn</li>
+    </ul>
+
+    <h2 data-num="4.">Hegðunarreglur</h2>
+    <p>Við notum FitBet erum við sammála um:</p>
+    <ul>
+      <li>Að nota appið lögmætt og af góðum hug</li>
+      <li>Að senda <strong>aðeins</strong> raunverulegar sönnunarmyndir — falsanir leiða til reikningslokunnar</li>
+      <li>Að virða aðra notendur og nota ekki niðurlægjandi eða árásargjarna orðræðu</li>
+      <li>Að klára áskoranir sem við höfum samþykkt</li>
+      <li>Að tilkynna vegna misnotkunar eða brota á skilmálum</li>
+    </ul>
+    <p>Við munum loka reikningum notenda sem bryta gegn þessum reglum.</p>
+
+    <h2 data-num="5.">Innihald notenda</h2>
+    <p>Myndir og myndbönd sem þú hleður upp (sönnunargögn) eru þín eign. Með því að hlaða þeim upp:</p>
+    <ul>
+      <li>Veita þér FitBet takmarkaðar réttindi til að birta þær öðrum þátttakendum í áskoruninni</li>
+      <li>Staðfestir þú að efnið brjóti ekki réttindi annarra</li>
+      <li>Staðfestir þú að efnið innihaldi engar láslegar myndir, kynferðislegt efni eða efni sem skemmir dýrlegar</li>
+    </ul>
+
+    <h2 data-num="6.">Íþróttaniðurstöður og deildir</h2>
+    <p>FitBet notar íþróttaniðurstöður frá opinberum heimildum til uppgjörs veðmála. Við getum ekki ábyrgjast:</p>
+    <ul>
+      <li>Nákvæmni eða tímelægi íþróttaniðurstaðna</li>
+      <li>Að leikir verði ekki frestir, hætti eða breytt</li>
+    </ul>
+    <p>Ef leikur er afturkallaður eða ekki kláraður, verður viðkomandi veðmál ógilt og engin áskorun úthlutað.</p>
+
+    <h2 data-num="7.">Tilkynningarkerfi</h2>
+    <p>Við notum Expo push notifications til að senda þér tilkynningar. Þú getur slökkt á tilkynningum hvenær sem er í símastillingum. Við munum aldrei senda þér markaðstilkynningar án leyfis.</p>
+
+    <h2 data-num="8.">Þjónusta þriðja aðila</h2>
+    <p>FitBet notar eftirfarandi þjónustur þriðja aðila:</p>
+    <ul>
+      <li><strong>Supabase:</strong> Gagnagrunnur og auðkenning (supabase.com)</li>
+      <li><strong>Expo:</strong> App þróunarvettvangur og push tilkynningar (expo.dev)</li>
+      <li><strong>Strava</strong> (valfrjálst): Æfingarstaðfesting (strava.com)</li>
+    </ul>
+    <p>Notkun þessara þjónusta er háð eigin skilmálum þeirra.</p>
+
+    <h2 data-num="9.">Takmarkanir á ábyrgð</h2>
+    <p>FitBet er veitt "eins og er" án nokkurrar ábyrgðar. Við berum ekki ábyrgð á:</p>
+    <ul>
+      <li>Líkamlegum meiðslum við líkamsþjálfun</li>
+      <li>Deilum milli notenda um áskoranir eða veðmál</li>
+      <li>Missi gagna vegna tæknilegra bilana</li>
+    </ul>
+    <p><strong>Þú ber fulla ábyrgð á eigin heilsu og öryggi við líkamsþjálfun.</strong> Ráðfærðu þig við lækni áður en þú byrjar nýja þjálfun.</p>
+
+    <h2 data-num="10.">Lok reiknings og þjónustu</h2>
+    <p>Þú getur eytt reikningnum þínum hvenær sem er: Prófíll → Stillingar → Eyða reikningi. Við getum lokað reikningi notanda sem brýtur gegn skilmálum. Við getum hætt þjónustunni með 30 daga fyrirvara.</p>
+
+    <h2 data-num="11.">Löggjöf</h2>
+    <p>Þessir skilmálar lúta íslenskum lögum. Deilur eru leysdar fyrir íslenskum dómstólum.</p>
+
+    <h2 data-num="12.">Breytingar</h2>
+    <p>Við getum uppfært þessa skilmála. Við munum tilkynna þér um verulegar breytingar í gegnum appið. Áframhaldandi notkun eftir tilkynningu þykir samþykki á nýjum skilmálum.</p>
+
+    <h2 data-num="13.">Hafa samband</h2>
+    <div class="contact-card">
+      <p><strong>FitBet ehf.</strong></p>
+      <p>Netfang: <a href="/cdn-cgi/l/email-protection#ddb1b8babcb19dbbb4a9bfb8a9f3b4ae"><span class="__cf_email__" data-cfemail="7b171e1c1a173b1d120f191e0f551208">[email&#160;protected]</span></a></p>
+      <p>Stuðningur: <a href="/cdn-cgi/l/email-protection#9cefe9ececf3eee8dcfaf5e8fef9e8b2f5ef"><span class="__cf_email__" data-cfemail="eb989e9b9b84999fab8d829f898e9fc58298">[email&#160;protected]</span></a></p>
+      <p>Vefur: <a href="https://fitbet.is">fitbet.is</a></p>
+    </div>
+  </div>
+
+  <!-- ── ENGLISH ── -->
+  <div class="lang-section" id="lang-en">
+    <div class="badge">Terms of Service</div>
+    <h1>Terms of use for FitBet</h1>
+    <div class="meta">Last updated: March 20, 2026 · By registering you accept these terms</div>
+
+    <div class="info-box">
+      <p>FitBet is a fun social app where friends compete in sports predictions. No monetary gambling takes place. The app is built around fitness challenges, not financial incentives.</p>
+    </div>
+
+    <h2 data-num="1.">Definitions</h2>
+    <ul>
+      <li><strong>FitBet / we / us:</strong> FitBet ehf., developers and operators of the app</li>
+      <li><strong>User / you:</strong> An individual who registers and uses FitBet</li>
+      <li><strong>Bet:</strong> An agreement between two users about a sports prediction — no money involved</li>
+      <li><strong>Challenge:</strong> A fitness task that the loser of a bet must complete</li>
+    </ul>
+
+    <h2 data-num="2.">How the service works</h2>
+    <p>FitBet is a game app where friends:</p>
+    <ul>
+      <li>Bet on sports match outcomes — <strong>no money</strong> involved</li>
+      <li>The loser must complete a fitness challenge</li>
+      <li>The loser uploads a photo or video as proof</li>
+      <li>The winner approves the proof</li>
+    </ul>
+
+    <div class="warning-box">
+      <p>⚠ FitBet is NOT a financial gambling site. No money, credit cards, or financial assets are part of the service. This is a fitness and social app.</p>
+    </div>
+
+    <h2 data-num="3.">Registration and account</h2>
+    <ul>
+      <li>You must be at least 12 years old to use FitBet</li>
+      <li>You are responsible for the security of your account and password</li>
+      <li>You may only create one account</li>
+      <li>Your username must not be misleading, degrading, or inappropriate</li>
+      <li>You are responsible for all activity through your account</li>
+    </ul>
+
+    <h2 data-num="4.">Conduct rules</h2>
+    <p>By using FitBet, you agree to:</p>
+    <ul>
+      <li>Use the app lawfully and in good faith</li>
+      <li>Submit <strong>only</strong> genuine proof — falsifications lead to account suspension</li>
+      <li>Respect other users and avoid degrading or aggressive language</li>
+      <li>Complete challenges you have accepted</li>
+      <li>Report misuse or violations of terms</li>
+    </ul>
+    <p>We will close accounts of users who violate these rules.</p>
+
+    <h2 data-num="5.">User content</h2>
+    <p>Photos and videos you upload (proof material) are your property. By uploading them, you:</p>
+    <ul>
+      <li>Grant FitBet limited rights to display them to other participants in the challenge</li>
+      <li>Confirm that the content does not infringe others' rights</li>
+      <li>Confirm the content contains no sexual material or content that harms third parties</li>
+    </ul>
+
+    <h2 data-num="6.">Sports results and leagues</h2>
+    <p>FitBet uses sports results from official sources to settle bets. We cannot guarantee:</p>
+    <ul>
+      <li>Accuracy or timeliness of sports results</li>
+      <li>That matches will not be postponed, cancelled, or changed</li>
+    </ul>
+    <p>If a match is cancelled or not completed, the associated bet will be voided with no challenge assigned.</p>
+
+    <h2 data-num="7.">Limitations of liability</h2>
+    <p>FitBet is provided "as is" without any warranty. We are not liable for:</p>
+    <ul>
+      <li>Physical injuries during exercise</li>
+      <li>Disputes between users about challenges or bets</li>
+      <li>Data loss due to technical failures</li>
+    </ul>
+    <p><strong>You bear full responsibility for your own health and safety during exercise.</strong> Consult a doctor before starting new training.</p>
+
+    <h2 data-num="8.">Governing law</h2>
+    <p>These terms are governed by Icelandic law. Disputes are resolved before Icelandic courts.</p>
+
+    <h2 data-num="9.">Contact</h2>
+    <div class="contact-card">
+      <p><strong>FitBet ehf.</strong></p>
+      <p>Email: <a href="/cdn-cgi/l/email-protection#f8949d9f9994b89e918c9a9d8cd6918b"><span class="__cf_email__" data-cfemail="274b4240464b67414e53454253094e54">[email&#160;protected]</span></a></p>
+      <p>Support: <a href="/cdn-cgi/l/email-protection#15666065657a676155737c617770613b7c66"><span class="__cf_email__" data-cfemail="463533363629343206202f32242332682f35">[email&#160;protected]</span></a></p>
+      <p>Website: <a href="https://fitbet.is">fitbet.is</a></p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p
