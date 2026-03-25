@@ -48,26 +48,25 @@
         "android.permission.POST_NOTIFICATIONS"
       ]
     },
-    "plugins": [
-      [
-        "expo-notifications",
-        {
-          "color": "#00e5a0",
-          "defaultChannel": "default",
-          "androidMode": "default",
-          "androidCollapsedTitle": "FitBet"
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "FitBet þarf aðgang að myndasafni til að hlaða upp sönnunarmyndum.",
-          "cameraPermission": "FitBet þarf aðgang að myndavél til að taka sönnunarmyndir."
-        }
-      ],
-      "expo-secure-store",
-      "@react-native-community/datetimepicker"
-    ],
+"plugins": [
+  [
+    "expo-notifications",
+    {
+      "color": "#00e5a0",
+      "defaultChannel": "default",
+      "androidMode": "default",
+      "androidCollapsedTitle": "FitBet"
+    }
+  ],
+  [
+    "expo-image-picker",
+    {
+      "photosPermission": "FitBet þarf aðgang að myndasafni til að hlaða upp sönnunarmyndum.",
+      "cameraPermission": "FitBet þarf aðgang að myndavél til að taka sönnunarmyndir."
+    }
+  ],
+  "expo-secure-store"
+],
     "extra": {
       "eas": {
         "projectId": "b521fa2f-ed33-4a86-a63a-5787c27830d5"
