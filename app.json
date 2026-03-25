@@ -7,13 +7,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": [
-  "**/*"
-],
-"splash": {
-  "image": "./app/assets/splash.png",
-  "resizeMode": "contain",
-  "backgroundColor": "#0a0a0f"
-},
+      "**/*"
+    ],
+    "splash": {
+      "image": "./app/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0f"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "is.fitbet.app",
@@ -26,19 +26,27 @@
         "NSMicrophoneUsageDescription": "FitBet þarf hljóðnema til að taka sönnunarmyndbönd.",
         "NSMotionUsageDescription": "FitBet notar hreyfiskynjarann til að rekja líkamsþjálfun.",
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
-     },
+    },
     "android": {
-     "package": "is.fitbet.app",
-     "versionCode": 1,
-     "adaptiveIcon": {
-      "foregroundImage": "./app/assets/adaptive-icon.png",
-      "backgroundColor": "#0a0a0f"
-  },
+      "package": "is.fitbet.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./app/assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0f"
+      },
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
@@ -75,6 +83,12 @@
         "projectId": "b521fa2f-ed33-4a86-a63a-5787c27830d5"
       }
     },
-    "owner": "fitbet"
+    "owner": "fitbet",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b521fa2f-ed33-4a86-a63a-5787c27830d5"
+    }
   }
 }
