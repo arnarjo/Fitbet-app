@@ -2,7 +2,7 @@
 // In-app admin screen for match management (mobile admin)
 // Only visible to users with admin role
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, Modal, StatusBar,
@@ -50,9 +50,9 @@ export default function AdminScreen() {
   // Add market form
   const [showAddMarket, setShowAddMarket] = useState(false);
   const [marketTitle, setMarketTitle]     = useState('');
-  const [marketLeague, setMarketLeague]   = useState('Besta deild karla');
+  const [marketLeague]                    = useState('Besta deild karla');
   const [marketType, setMarketType]       = useState('meistari');
-  const [marketYear, setMarketYear]       = useState('2026');
+  const [marketYear]                      = useState('2026');
   const [marketTeams, setMarketTeams]     = useState('');
   const [savingMarket, setSavingMarket]   = useState(false);
 
@@ -118,7 +118,7 @@ export default function AdminScreen() {
   // ── Add market ──
   async function saveMarket() {
     const teamList = marketTeams.split(',').map(t => t.trim()).filter(Boolean);
-    if (!marketTitle || teamList.length < 2) {
+    if (!marketTitle.trim() || teamList.length < 2) {
       Alert.alert('Villa', 'Titill og a.m.k. 2 lið þarf'); return;
     }
     setSavingMarket(true);
@@ -146,7 +146,7 @@ export default function AdminScreen() {
 
   const pendingSettle = matches.filter(m => m.status === 'upcoming' && new Date(m.kickoff_time) < new Date());
 
-  if (!profile) return null;
+  if (!profile || !profile.is_admin) return null;
 
   return (
     <SafeAreaView style={s.container}>

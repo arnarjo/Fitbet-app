@@ -29,10 +29,10 @@ const FEATURE_MESSAGES: Record<string, { title: string; desc: string; emoji: str
 };
 
 const PREMIUM_FEATURES = [
+  { emoji: '🌍', title: 'Premier League & CL',    desc: 'Veðjaðu á leiki og tímabilsmarkaði í erlendum deildum' },
   { emoji: '🏅', title: 'Ótakmarkaðar deildir',  desc: 'Búðu til eins margar og þú vilt (ókeypis: 2)' },
   { emoji: '⚡', title: 'Strava tenging',          desc: 'Hlaup og hjólreiðar staðfest sjálfkrafa' },
   { emoji: '💪', title: 'Sérsniðnar áskoranir',   desc: 'Veldu hvaða æfingu sem er, hvaða magn' },
-  { emoji: '🎯', title: 'Ótakmörkuð veðmál',      desc: 'Engar takmarkanir á fjölda veðmála' },
   { emoji: '📊', title: 'Ítarleg tölfræði',        desc: 'Sjáðu nákvæma greiningu á sigrum og töpum' },
 ];
 
@@ -163,10 +163,11 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
               <Text style={s.comparisonPrem}>Premium</Text>
             </View>
             {[
-              { label: 'Deildir',        free: '2',    prem: '∞' },
-              { label: 'Strava',         free: '✕',    prem: '✓' },
-              { label: 'Sérsniðið',      free: '✕',    prem: '✓' },
-              { label: 'Tölfræði',       free: 'Grunn', prem: 'Ítarleg' },
+              { label: 'Íslenskar deildir', free: '✓',    prem: '✓' },
+              { label: 'Prem / CL',         free: '✕',    prem: '✓' },
+              { label: 'Deildir',           free: '2',    prem: '∞' },
+              { label: 'Strava',            free: '✕',    prem: '✓' },
+              { label: 'Sérsniðið',         free: '✕',    prem: '✓' },
             ].map((row, i) => (
               <View key={i} style={s.comparisonRow}>
                 <Text style={s.comparisonLabel}>{row.label}</Text>

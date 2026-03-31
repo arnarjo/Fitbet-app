@@ -1,6 +1,3 @@
-// src/screens/MatchesScreen.tsx
-// Full matches screen wiring MatchCard + BetModal together
-
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -12,34 +9,36 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import MatchCard from '../components/MatchCard';
 import BetModal from '../components/BetModal';
 import { useMatches } from '../hooks/useMatches';
 import { useBets } from '../hooks/useBets';
 import { useAuth } from '../hooks/useAuth';
-import type { Match, MatchResult } from '../types/database';
+import { usePremium, PREMIUM_LEAGUES } from '../hooks/usePremium';
+import type { Match, MatchResult, Exercise } from '../types/database';
 
 const LEAGUES = [
   { key: 'all', label: 'Allir' },
   { key: 'Premier League', label: 'Premier League' },
   { key: 'UEFA Champions League', label: 'Champions Lg' },
-  { key: 'Besta deild karla', label: 'Besta deild' },
-  { key: 'Lengjudeild karla', label: 'Lengjudeild' },
-  { key: '2. deild karla', label: '2. deild' },
+  { key: 'Besta deild karla', label: 'Besta deildin' },
+  { key: 'Lengjudeild karla', label: 'Lengjudeildin' },
 ];
 
 export default function MatchesScreen() {
   const { profile } = useAuth();
+  const { canAccessLeague } = usePremium();
+  const navigation = useNavigation<any>();
   const [activeLeague, setActiveLeague] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  // BetModal state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedPrediction, setSelectedPrediction] = useState<MatchResult | null>(null);
 
   const league = activeLeague === 'all' ? undefined : activeLeague;
-  const { matches, loading, refetch } = useMatches(league);
+  const { matches, loading, error, refetch } = useMatches(league);
   const { createBet } = useBets(profile?.id ?? '');
 
   const onRefresh = useCallback(async () => {
@@ -48,9 +47,9 @@ export default function MatchesScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  function handleBetPress(match: Match, prediction: MatchResult) {
+  function handleOpenBet(match: Match) {
     setSelectedMatch(match);
-    setSelectedPrediction(prediction);
+    setSelectedPrediction(null);
     setModalVisible(true);
   }
 
@@ -58,22 +57,25 @@ export default function MatchesScreen() {
     matchId: string,
     opponentId: string,
     prediction: MatchResult,
-    exercise: string,
+    exercise: Exercise,
     amount: number,
     unit: string,
   ) {
     return createBet(matchId, opponentId, prediction, exercise, amount, unit);
   }
 
-  // Group matches by date
   const today = new Date().toDateString();
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toDateString();
 
-  const todayMatches = matches.filter(m => new Date(m.kickoff_time).toDateString() === today);
-  const tomorrowMatches = matches.filter(m => new Date(m.kickoff_time).toDateString() === tomorrowStr);
-  const laterMatches = matches.filter(m => {
+  const todayMatches = matches.filter(
+    (m) => new Date(m.kickoff_time).toDateString() === today
+  );
+  const tomorrowMatches = matches.filter(
+    (m) => new Date(m.kickoff_time).toDateString() === tomorrowStr
+  );
+  const laterMatches = matches.filter((m) => {
     const d = new Date(m.kickoff_time).toDateString();
     return d !== today && d !== tomorrowStr;
   });
@@ -82,89 +84,113 @@ export default function MatchesScreen() {
     <SafeAreaView style={s.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>Leikir</Text>
       </View>
 
-      {/* League filter tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={s.tabsScroll}
         contentContainerStyle={s.tabsContent}
       >
-        {LEAGUES.map((lg) => (
-          <TouchableOpacity
-            key={lg.key}
-            style={[s.tab, activeLeague === lg.key && s.tabActive]}
-            onPress={() => setActiveLeague(lg.key)}
-            activeOpacity={0.75}
-          >
-            <Text style={[s.tabText, activeLeague === lg.key && s.tabTextActive]}>
-              {lg.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {LEAGUES.map((lg) => {
+          const locked = lg.key !== 'all' && !canAccessLeague(lg.key);
+          return (
+            <TouchableOpacity
+              key={lg.key}
+              style={[s.tab, activeLeague === lg.key && s.tabActive, locked && s.tabLocked]}
+              onPress={() => {
+                if (locked) {
+                  navigation.navigate('Paywall', { feature: 'general' });
+                } else {
+                  setActiveLeague(lg.key);
+                }
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={[s.tabText, activeLeague === lg.key && s.tabTextActive, locked && s.tabTextLocked]}>
+                {locked ? '🔒 ' : ''}{lg.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Matches list */}
       <ScrollView
         style={s.list}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00e5a0"
+          />
         }
       >
         {loading && matches.length === 0 ? (
           <View style={s.loadingState}>
             <Text style={s.loadingText}>Hleður leikjum...</Text>
           </View>
+        ) : error ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyIcon}>⚠️</Text>
+            <Text style={s.emptyTitle}>Ekki tókst að sækja leiki</Text>
+            <Text style={s.emptySub}>{error}</Text>
+          </View>
         ) : matches.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>📅</Text>
-            <Text style={s.emptyTitle}>Engir leikir í boði</Text>
-            <Text style={s.emptySub}>Admin bætir við leikjum í stjórnborðinu</Text>
+            <Text style={s.emptyTitle}>Engir leikir fundust</Text>
+            <Text style={s.emptySub}>
+              Prófaðu að velja aðra deild eða athugaðu aftur síðar.
+            </Text>
           </View>
         ) : (
           <>
             {todayMatches.length > 0 && (
               <View>
                 <Text style={s.dateLabel}>Í DAG</Text>
-                {todayMatches.map(m => (
-                  <MatchCard key={m.id} match={m} onBetPress={handleBetPress} />
+                {todayMatches.map((m) => (
+                  <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
               </View>
             )}
+
             {tomorrowMatches.length > 0 && (
               <View>
                 <Text style={s.dateLabel}>Á MORGUN</Text>
-                {tomorrowMatches.map(m => (
-                  <MatchCard key={m.id} match={m} onBetPress={handleBetPress} />
+                {tomorrowMatches.map((m) => (
+                  <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
               </View>
             )}
+
             {laterMatches.length > 0 && (
               <View>
                 <Text style={s.dateLabel}>SÍÐAR</Text>
-                {laterMatches.map(m => (
-                  <MatchCard key={m.id} match={m} onBetPress={handleBetPress} />
+                {laterMatches.map((m) => (
+                  <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
               </View>
             )}
           </>
         )}
-        <View style={{ height: 24 }} />
+
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bet Modal */}
       <BetModal
         visible={modalVisible}
         match={selectedMatch}
         initialPrediction={selectedPrediction}
         currentUserId={profile?.id ?? ''}
-        onClose={() => { setModalVisible(false); setSelectedMatch(null); setSelectedPrediction(null); }}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedMatch(null);
+          setSelectedPrediction(null);
+        }}
         onSubmit={handleSubmitBet}
       />
     </SafeAreaView>
@@ -206,6 +232,8 @@ const s = StyleSheet.create({
     color: '#9090aa',
   },
   tabTextActive: { color: '#000' },
+  tabLocked: { borderColor: 'rgba(255,201,64,0.2)', borderStyle: 'dashed' },
+  tabTextLocked: { color: '#5a5a72' },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 16 },
   dateLabel: {

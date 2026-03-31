@@ -5,8 +5,10 @@ import {
   RefreshControl, StatusBar, Modal, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { usePremium } from '../hooks/usePremium';
 import type { SeasonMarket, SeasonBet, Profile } from '../types/database';
 import { MARKET_TYPE_LABELS } from '../types/database';
 
@@ -19,6 +21,8 @@ const MARKET_COLORS: Record<string, { accent: string; bg: string }> = {
 
 export default function SeasonScreen() {
   const { profile } = useAuth();
+  const { canAccessLeague } = usePremium();
+  const navigation = useNavigation<any>();
   const [markets, setMarkets]         = useState<SeasonMarket[]>([]);
   const [myBets, setMyBets]           = useState<SeasonBet[]>([]);
   const [friends, setFriends]         = useState<Profile[]>([]);
@@ -89,6 +93,10 @@ export default function SeasonScreen() {
   }, [profile?.id]);
 
   function openBetModal(market: SeasonMarket) {
+    if (!canAccessLeague(market.league_name)) {
+      navigation.navigate('Paywall', { feature: 'general' });
+      return;
+    }
     if (market.status === 'locked') {
       Alert.alert('Markaður læstur', 'Þessi markaður tekur ekki við fleiri veðmálum.');
       return;
@@ -173,7 +181,7 @@ export default function SeasonScreen() {
                   <>
                     <Text style={s.groupLabel}>OPNIR</Text>
                     {openMarkets.map(m => (
-                      <MarketCard key={m.id} market={m} onBet={() => openBetModal(m)} />
+                      <MarketCard key={m.id} market={m} premiumLocked={!canAccessLeague(m.league_name)} onBet={() => openBetModal(m)} />
                     ))}
                   </>
                 )}
@@ -181,7 +189,7 @@ export default function SeasonScreen() {
                   <>
                     <Text style={[s.groupLabel, { marginTop: 8 }]}>LÆSTIR — LOKAÐ Á NÝ VEÐMÁL</Text>
                     {lockedMarkets.map(m => (
-                      <MarketCard key={m.id} market={m} onBet={() => openBetModal(m)} />
+                      <MarketCard key={m.id} market={m} premiumLocked={!canAccessLeague(m.league_name)} onBet={() => openBetModal(m)} />
                     ))}
                   </>
                 )}
@@ -228,23 +236,48 @@ export default function SeasonScreen() {
               </View>
 
               {/* Pick team */}
-              <Text style={s.fieldLabel}>VELDU LIÐ</Text>
-              <View style={s.teamGrid}>
-                {(selectedMarket.available_teams ?? []).map(team => (
-                  <TouchableOpacity
-                    key={team}
-                    style={[s.teamChip, selectedTeam === team && {
-                      borderColor: col(selectedMarket.market_type).accent,
-                      backgroundColor: col(selectedMarket.market_type).bg,
-                    }]}
-                    onPress={() => setSelectedTeam(team)}
-                  >
-                    <Text style={[s.teamChipText, selectedTeam === team && {
-                      color: col(selectedMarket.market_type).accent,
-                    }]}>{team}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {selectedMarket.market_type === 'yfir_neðar' ? (
+                <>
+                  <Text style={s.fieldLabel}>HVORT LIÐ ENDAR HÆRRA?</Text>
+                  <View style={s.h2hPickRow}>
+                    {(selectedMarket.available_teams ?? []).slice(0, 2).map((team, idx) => {
+                      const isSel = selectedTeam === team;
+                      return (
+                        <TouchableOpacity
+                          key={team}
+                          style={[s.h2hPickBtn, isSel && s.h2hPickBtnActive]}
+                          onPress={() => setSelectedTeam(team)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[s.h2hPickLabel, isSel && { color: '#00e5a0' }]}>{team}</Text>
+                          <Text style={s.h2hPickSub}>{idx === 0 ? 'Lið 1' : 'Lið 2'}</Text>
+                          {isSel && <View style={s.h2hPickCheck}><Text style={{ color: '#000', fontSize: 11, fontWeight: '800' }}>✓</Text></View>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={s.fieldLabel}>VELDU LIÐ</Text>
+                  <View style={s.teamGrid}>
+                    {(selectedMarket.available_teams ?? []).map(team => (
+                      <TouchableOpacity
+                        key={team}
+                        style={[s.teamChip, selectedTeam === team && {
+                          borderColor: col(selectedMarket.market_type).accent,
+                          backgroundColor: col(selectedMarket.market_type).bg,
+                        }]}
+                        onPress={() => setSelectedTeam(team)}
+                      >
+                        <Text style={[s.teamChipText, selectedTeam === team && {
+                          color: col(selectedMarket.market_type).accent,
+                        }]}>{team}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
 
               {/* Pick opponent */}
               <Text style={s.fieldLabel}>GEGN HVERJUM?</Text>
@@ -310,25 +343,34 @@ export default function SeasonScreen() {
 }
 
 // ── MarketCard ────────────────────────────────────────────────
-function MarketCard({ market, onBet }: { market: SeasonMarket; onBet: () => void }) {
+function MarketCard({ market, premiumLocked, onBet }: { market: SeasonMarket; premiumLocked?: boolean; onBet: () => void }) {
+  if (market.market_type === 'yfir_neðar') {
+    return <H2HMarketCard market={market} premiumLocked={premiumLocked} onBet={onBet} />;
+  }
   const col = MARKET_COLORS[market.market_type] ?? MARKET_COLORS.meistari;
   const isLocked = market.status === 'locked';
   return (
-    <View style={[s.marketCard, { borderColor: isLocked ? 'rgba(255,201,64,0.15)' : col.accent + '25' }]}>
+    <View style={[s.marketCard, { borderColor: isLocked ? 'rgba(255,201,64,0.15)' : col.accent + '25' }, premiumLocked && s.marketCardPremium]}>
       <View style={s.marketTop}>
         <View style={[s.marketTypeBadge, { backgroundColor: col.bg }]}>
           <Text style={[s.marketTypeBadgeText, { color: col.accent }]}>
             {MARKET_TYPE_LABELS[market.market_type as keyof typeof MARKET_TYPE_LABELS] ?? market.market_type}
           </Text>
         </View>
-        <View style={[s.marketStatusBadge, isLocked
-          ? { backgroundColor: 'rgba(255,201,64,0.1)' }
-          : { backgroundColor: 'rgba(0,229,160,0.1)' }
-        ]}>
-          <Text style={[s.marketStatusText, isLocked ? { color: '#ffc940' } : { color: '#00e5a0' }]}>
-            {isLocked ? '🔒 Læstur' : 'Opinn'}
-          </Text>
-        </View>
+        {premiumLocked ? (
+          <View style={s.premiumBadge}>
+            <Text style={s.premiumBadgeText}>👑 Premium</Text>
+          </View>
+        ) : (
+          <View style={[s.marketStatusBadge, isLocked
+            ? { backgroundColor: 'rgba(255,201,64,0.1)' }
+            : { backgroundColor: 'rgba(0,229,160,0.1)' }
+          ]}>
+            <Text style={[s.marketStatusText, isLocked ? { color: '#ffc940' } : { color: '#00e5a0' }]}>
+              {isLocked ? '🔒 Læstur' : 'Opinn'}
+            </Text>
+          </View>
+        )}
       </View>
       <Text style={s.marketTitle}>{market.title}</Text>
       <Text style={s.marketMeta}>{market.league_name} · {market.season_year}</Text>
@@ -342,11 +384,75 @@ function MarketCard({ market, onBet }: { market: SeasonMarket; onBet: () => void
           </View>
         )}
       </View>
-      {!isLocked && (
+      {premiumLocked ? (
+        <TouchableOpacity style={s.premiumBtn} onPress={onBet}>
+          <Text style={s.premiumBtnText}>👑 Fá Premium til að veðja →</Text>
+        </TouchableOpacity>
+      ) : !isLocked ? (
         <TouchableOpacity style={[s.betBtn, { backgroundColor: col.accent }]} onPress={onBet}>
           <Text style={s.betBtnText}>Veðja →</Text>
         </TouchableOpacity>
-      )}
+      ) : null}
+    </View>
+  );
+}
+
+// ── Head-to-head card for yfir_neðar markets ─────────────────
+function H2HMarketCard({ market, premiumLocked, onBet }: { market: SeasonMarket; premiumLocked?: boolean; onBet: () => void }) {
+  const isLocked = market.status === 'locked';
+  const teams = market.available_teams ?? [];
+  const teamA = teams[0] ?? '?';
+  const teamB = teams[1] ?? '?';
+  return (
+    <View style={[s.h2hCard, premiumLocked && s.marketCardPremium]}>
+      {/* Header row */}
+      <View style={s.h2hHeader}>
+        <View style={s.h2hBadge}>
+          <Text style={s.h2hBadgeText}>⚔ Hvort endar hærra?</Text>
+        </View>
+        {premiumLocked ? (
+          <View style={s.premiumBadge}>
+            <Text style={s.premiumBadgeText}>👑 Premium</Text>
+          </View>
+        ) : (
+          <View style={[s.marketStatusBadge, isLocked
+            ? { backgroundColor: 'rgba(255,201,64,0.1)' }
+            : { backgroundColor: 'rgba(0,229,160,0.1)' }
+          ]}>
+            <Text style={[s.marketStatusText, isLocked ? { color: '#ffc940' } : { color: '#00e5a0' }]}>
+              {isLocked ? '🔒 Læstur' : 'Opinn'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <Text style={s.h2hTitle}>{market.title}</Text>
+      <Text style={s.h2hMeta}>{market.league_name} · {market.season_year}</Text>
+
+      {/* Teams side by side */}
+      <View style={s.h2hTeams}>
+        <View style={s.h2hTeamBox}>
+          <Text style={s.h2hTeamName} numberOfLines={2}>{teamA}</Text>
+          <Text style={s.h2hTeamSub}>Lið 1</Text>
+        </View>
+        <View style={s.h2hVs}>
+          <Text style={s.h2hVsText}>VS</Text>
+        </View>
+        <View style={[s.h2hTeamBox, { alignItems: 'flex-end' }]}>
+          <Text style={[s.h2hTeamName, { textAlign: 'right' }]} numberOfLines={2}>{teamB}</Text>
+          <Text style={s.h2hTeamSub}>Lið 2</Text>
+        </View>
+      </View>
+
+      {premiumLocked ? (
+        <TouchableOpacity style={s.premiumBtn} onPress={onBet} activeOpacity={0.85}>
+          <Text style={s.premiumBtnText}>👑 Fá Premium til að veðja →</Text>
+        </TouchableOpacity>
+      ) : !isLocked ? (
+        <TouchableOpacity style={s.h2hBtn} onPress={onBet} activeOpacity={0.85}>
+          <Text style={s.h2hBtnText}>Veðja á hvort endar hærra →</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -427,6 +533,15 @@ const s = StyleSheet.create({
   teamPillText: { fontSize: 11, fontWeight: '600', color: '#9090aa' },
   betBtn: { borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
   betBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
+  marketCardPremium: { opacity: 0.75, borderColor: 'rgba(255,201,64,0.2)' },
+  premiumBadge: { backgroundColor: 'rgba(255,201,64,0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  premiumBadgeText: { fontSize: 10, fontWeight: '800', color: '#ffc940' },
+  premiumBtn: {
+    backgroundColor: 'rgba(255,201,64,0.12)', borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,201,64,0.3)',
+    paddingVertical: 11, alignItems: 'center',
+  },
+  premiumBtnText: { fontSize: 13, fontWeight: '800', color: '#ffc940' },
   betRow: {
     backgroundColor: '#1a1a24', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
@@ -472,4 +587,56 @@ const s = StyleSheet.create({
   challengeChipTextActive: { color: '#00e5a0' },
   submitBtn: { backgroundColor: '#00e5a0', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   submitBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
+
+  // H2H card
+  h2hCard: {
+    backgroundColor: '#1a1a24', borderRadius: 18,
+    borderWidth: 1.5, borderColor: 'rgba(0,229,160,0.2)',
+    padding: 18, marginBottom: 14,
+  },
+  h2hHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  h2hBadge: { backgroundColor: 'rgba(0,229,160,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  h2hBadgeText: { fontSize: 11, fontWeight: '800', color: '#00e5a0' },
+  h2hTitle: { fontSize: 18, fontWeight: '900', color: '#f0f0f8', marginBottom: 3 },
+  h2hMeta: { fontSize: 11, color: '#5a5a72', marginBottom: 16 },
+  h2hTeams: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#111118', borderRadius: 14,
+    padding: 16, marginBottom: 16, gap: 8,
+  },
+  h2hTeamBox: { flex: 1 },
+  h2hTeamName: { fontSize: 17, fontWeight: '900', color: '#f0f0f8', lineHeight: 22 },
+  h2hTeamSub: { fontSize: 10, color: '#5a5a72', marginTop: 4, fontWeight: '600' },
+  h2hVs: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#22222f', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  h2hVsText: { fontSize: 10, fontWeight: '900', color: '#5a5a72' },
+  h2hBtn: {
+    backgroundColor: '#00e5a0', borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  h2hBtnText: { fontSize: 14, fontWeight: '800', color: '#000' },
+
+  // H2H bet modal picker
+  h2hPickRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  h2hPickBtn: {
+    flex: 1, backgroundColor: '#111118', borderRadius: 16,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 20, paddingHorizontal: 12,
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  h2hPickBtnActive: {
+    borderColor: '#00e5a0',
+    backgroundColor: 'rgba(0,229,160,0.07)',
+  },
+  h2hPickLabel: { fontSize: 15, fontWeight: '800', color: '#f0f0f8', textAlign: 'center', marginBottom: 4 },
+  h2hPickSub: { fontSize: 10, fontWeight: '600', color: '#5a5a72', textAlign: 'center' },
+  h2hPickCheck: {
+    position: 'absolute', top: 8, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#00e5a0', alignItems: 'center', justifyContent: 'center',
+  },
 });

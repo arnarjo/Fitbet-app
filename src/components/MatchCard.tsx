@@ -1,25 +1,15 @@
-// src/components/MatchCard.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
 } from 'react-native';
-import type { Match, MatchResult } from '../types/database';
+import type { Match } from '../types/database';
 
 type Props = {
   match: Match;
-  onBetPress: (match: Match, prediction: MatchResult) => void;
-  myPrediction?: MatchResult | null;
-  disabled?: boolean;
-};
-
-const PREDICTION_LABELS: Record<MatchResult, string> = {
-  home: 'Heimalið',
-  draw: 'Jafntefli',
-  away: 'Útlið',
+  onOpenBet: (match: Match) => void;
 };
 
 const LEAGUE_COLORS: Record<string, string> = {
@@ -27,64 +17,37 @@ const LEAGUE_COLORS: Record<string, string> = {
   'UEFA Champions League': '#3d8bff',
   'Besta deild karla': '#ffc940',
   'Lengjudeild karla': '#ff9f40',
-  '2. deild karla': '#ff4a6e',
 };
 
-export default function MatchCard({ match, onBetPress, myPrediction, disabled }: Props) {
-  const [selected, setSelected] = useState<MatchResult | null>(myPrediction ?? null);
+export default function MatchCard({ match, onOpenBet }: Props) {
   const accentColor = LEAGUE_COLORS[match.league_name] ?? '#00e5a0';
 
-  const isFinished = match.status === 'finished';
+  const isFinished =
+    match.status === 'finished' ||
+    match.status === 'FT' ||
+    match.status === 'AET' ||
+    match.status === 'PEN';
 
-  function handleSelect(prediction: MatchResult) {
-    if (disabled || isFinished) return;
-    setSelected(prediction);
-    onBetPress(match, prediction);
-  }
-
-  function getResultLabel(): string | null {
-    if (!isFinished || match.result == null) return null;
-    if (match.result === 'home') return `${match.home_team?.short_name ?? ''} vann`;
-    if (match.result === 'away') return `${match.away_team?.short_name ?? ''} vann`;
-    return 'Jafntefli';
-  }
-
-  const resultLabel = getResultLabel();
   const homeScore = match.home_score ?? null;
   const awayScore = match.away_score ?? null;
 
   return (
     <View style={[s.card, { borderLeftColor: accentColor }]}>
-
-      {/* League + time row */}
       <View style={s.topRow}>
         <View style={[s.leagueBadge, { backgroundColor: accentColor + '18' }]}>
-          <Text style={[s.leagueText, { color: accentColor }]}>{match.league_name}</Text>
-        </View>
-        <View style={s.rightMeta}>
-          {match.status === 'live' && (
-            <View style={s.liveDot} />
-          )}
-          <Text style={s.timeText}>
-            {match.status === 'live'
-              ? 'LIVE'
-              : match.status === 'finished'
-              ? 'Lokið'
-              : formatKickoff(match.kickoff_time)}
+          <Text style={[s.leagueText, { color: accentColor }]}>
+            {match.league_name}
           </Text>
         </View>
+
+        <Text style={s.timeText}>
+          {isFinished ? 'Lokið' : formatKickoff(match.kickoff_time)}
+        </Text>
       </View>
 
-      {/* Teams row */}
       <View style={s.teamsRow}>
+        <Text style={s.teamName}>{match.home_team?.name ?? 'Heimalið'}</Text>
 
-        {/* Home team */}
-        <View style={s.teamSide}>
-          <Text style={s.teamName} numberOfLines={2}>{match.home_team?.name ?? 'Heimalið'}</Text>
-          <Text style={s.teamSub}>Heimalið</Text>
-        </View>
-
-        {/* Score / VS */}
         <View style={s.middle}>
           {isFinished && homeScore !== null && awayScore !== null ? (
             <View style={s.scoreBox}>
@@ -93,87 +56,48 @@ export default function MatchCard({ match, onBetPress, myPrediction, disabled }:
               <Text style={s.scoreText}>{awayScore}</Text>
             </View>
           ) : (
-            <View style={s.vsBox}>
-              <Text style={s.vsText}>VS</Text>
-            </View>
+            <Text style={s.vsText}>VS</Text>
           )}
         </View>
 
-        {/* Away team */}
-        <View style={[s.teamSide, s.teamRight]}>
-          <Text style={[s.teamName, { textAlign: 'right' }]} numberOfLines={2}>
-            {match.away_team?.name ?? 'Útlið'}
-          </Text>
-          <Text style={[s.teamSub, { textAlign: 'right' }]}>Útlið</Text>
-        </View>
+        <Text style={[s.teamName, s.teamRight]}>
+          {match.away_team?.name ?? 'Útlið'}
+        </Text>
       </View>
 
-      {/* Result label (finished) */}
-      {resultLabel && (
-        <View style={s.resultRow}>
-          <Text style={s.resultText}>{resultLabel}</Text>
+      {isFinished ? (
+        <View style={s.finishedBanner}>
+          <Text style={s.finishedBannerText}>Leikur lokinn — ekki hægt að veðja</Text>
         </View>
-      )}
-
-      {/* Bet buttons (upcoming/live only) */}
-      {!isFinished && (
-        <View style={s.betBtns}>
-          {(['home', 'draw', 'away'] as MatchResult[]).map((pred) => {
-            const isSel = selected === pred;
-            return (
-              <TouchableOpacity
-                key={pred}
-                style={[
-                  s.betBtn,
-                  isSel && { backgroundColor: accentColor + '1a', borderColor: accentColor },
-                  disabled && s.betBtnDisabled,
-                ]}
-                onPress={() => handleSelect(pred)}
-                activeOpacity={0.75}
-                disabled={!!disabled}
-              >
-                <Text
-                  style={[s.betBtnText, isSel && { color: accentColor }]}
-                  numberOfLines={1}
-                >
-                  {pred === 'home'
-                    ? match.home_team?.short_name ?? 'Heim'
-                    : pred === 'away'
-                    ? match.away_team?.short_name ?? 'Úti'
-                    : 'Jafnt'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {/* My prediction badge */}
-      {myPrediction && !isFinished && (
-        <View style={s.myPredRow}>
-          <Text style={s.myPredText}>
-            Spá þín: <Text style={{ color: accentColor, fontWeight: '700' }}>
-              {PREDICTION_LABELS[myPrediction]}
-            </Text>
+      ) : (
+        <TouchableOpacity
+          style={[s.challengeBtn, { backgroundColor: accentColor }]}
+          onPress={() => onOpenBet(match)}
+          activeOpacity={0.85}
+        >
+          <Text style={[s.challengeBtnText, s.challengeBtnTextActive]}>
+            Setja veðmál
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
-
     </View>
   );
 }
 
-function formatKickoff(iso: string): string {
+function formatKickoff(iso: string) {
   const d = new Date(iso);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  const isTomorrow = d.toDateString() === tomorrow.toDateString();
-
-  const time = d.toLocaleTimeString('is-IS', { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return `Í dag · ${time}`;
-  if (isTomorrow) return `Á morgun · ${time}`;
-  return d.toLocaleDateString('is-IS', { weekday: 'short', day: 'numeric', month: 'short' }) + ` · ${time}`;
+  return (
+    d.toLocaleDateString('is-IS', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }) +
+    ' · ' +
+    d.toLocaleTimeString('is-IS', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  );
 }
 
 const s = StyleSheet.create({
@@ -191,6 +115,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 10,
   },
   leagueBadge: {
     paddingHorizontal: 9,
@@ -202,17 +127,6 @@ const s = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  rightMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#ff4a6e',
-  },
   timeText: {
     fontSize: 11,
     color: '#9090aa',
@@ -220,44 +134,27 @@ const s = StyleSheet.create({
   },
   teamsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 14,
     gap: 8,
-    marginBottom: 12,
-  },
-  teamSide: {
-    flex: 1,
-  },
-  teamRight: {
-    alignItems: 'flex-end',
   },
   teamName: {
+    flex: 1,
     fontSize: 15,
     fontWeight: '800',
     color: '#f0f0f8',
-    lineHeight: 20,
   },
-  teamSub: {
-    fontSize: 11,
-    color: '#5a5a72',
-    marginTop: 2,
+  teamRight: {
+    textAlign: 'right',
   },
   middle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 52,
-  },
-  vsBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#22222f',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    width: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },
   vsText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     color: '#5a5a72',
   },
@@ -276,42 +173,31 @@ const s = StyleSheet.create({
     color: '#5a5a72',
     fontWeight: '700',
   },
-  resultRow: {
+  challengeBtn: {
+    marginTop: 10,
+    borderRadius: 10,
+    paddingVertical: 13,
     alignItems: 'center',
-    marginBottom: 4,
   },
-  resultText: {
-    fontSize: 11,
-    color: '#9090aa',
-    fontWeight: '600',
+  challengeBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
   },
-  betBtns: {
-    flexDirection: 'row',
-    gap: 6,
+  challengeBtnTextActive: {
+    color: '#000',
   },
-  betBtn: {
-    flex: 1,
-    backgroundColor: '#22222f',
+  finishedBanner: {
+    marginTop: 10,
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 9,
-    paddingVertical: 9,
-    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
-  betBtnDisabled: {
-    opacity: 0.4,
-  },
-  betBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#9090aa',
-  },
-  myPredRow: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  myPredText: {
-    fontSize: 11,
+  finishedBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#5a5a72',
   },
 });

@@ -5,6 +5,7 @@ import {
   StatusBar, Alert, Switch, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import type { Achievement } from '../types/database';
@@ -33,6 +34,7 @@ function getInitials(name: string) {
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
+  const navigation = useNavigation<any>();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stravaConnected, setStravaConnected] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(true);
@@ -313,6 +315,21 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* ── Admin ── */}
+        {profile?.is_admin && (
+          <View style={s.section}>
+            <TouchableOpacity
+              style={s.adminBtn}
+              onPress={() => navigation.navigate('Admin')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.adminBtnIcon}>⚙</Text>
+              <Text style={s.adminBtnText}>Admin — Stjórna leikjum</Text>
+              <Text style={s.settingArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── Actions ── */}
         <View style={s.section}>
           <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
@@ -423,6 +440,14 @@ const s = StyleSheet.create({
   settingSub: { fontSize: 11, color: '#5a5a72', marginTop: 1 },
   settingArrow: { fontSize: 20, color: '#3a3a52' },
   settingDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.04)', marginHorizontal: 16 },
+  adminBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(0,229,160,0.06)', borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(0,229,160,0.2)',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  adminBtnIcon: { fontSize: 18, width: 24, textAlign: 'center' },
+  adminBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#00e5a0' },
   signOutBtn: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',

@@ -20,6 +20,7 @@ export interface Profile {
   avatar_url: string | null;
   city: string | null;
   strava_connected: boolean;
+  is_admin: boolean;
   total_points: number;
   total_wins: number;
   total_losses: number;
@@ -35,13 +36,25 @@ export interface Team {
   logo_url: string | null;
 }
 
+export type MatchStatus =
+  | 'upcoming'
+  | 'live'
+  | 'finished'
+  | 'cancelled'
+  | 'FT'
+  | 'AET'
+  | 'PEN'
+  | '1H'
+  | '2H'
+  | 'HT';
+
 export interface Match {
   id: string;
   home_team_id: string;
   away_team_id: string;
   league_name: string;
   kickoff_time: string;
-  status: 'upcoming' | 'live' | 'finished' | 'cancelled';
+  status: MatchStatus;
   home_score: number | null;
   away_score: number | null;
   result: MatchResult | null;
@@ -61,6 +74,9 @@ export interface Bet {
   winner_id: string | null;
   loser_id: string | null;
   league_id: string | null;
+  exercise: string | null;
+  amount: number | null;
+  unit: string | null;
   match?: Match;
   challenger?: Profile;
   opponent?: Profile;
@@ -156,6 +172,13 @@ export interface Notification {
   data: Record<string, unknown> | null;
   read: boolean;
   created_at: string;
+}
+
+export interface Achievement {
+  id: string;
+  user_id: string;
+  type: string;
+  unlocked_at: string;
 }
 
 export interface LeaderboardEntry {

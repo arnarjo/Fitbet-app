@@ -6,10 +6,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+import { navigationRef } from './navigationRef';
 
 // Auth screens
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
-import LoginScreen     from '../screens/auth/LoginScreen';
+import LoginScreen      from '../screens/auth/LoginScreen';
 import SignupScreen     from '../screens/auth/SignupScreen';
 
 // Main screens
@@ -29,9 +30,11 @@ const Tab   = createBottomTabNavigator();
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    Heim: '⚽', Leikir: '📅', Áskoranir: '💪',
-    Stigatafla: '🏆', Vinir: '👥', Deildir: '🏅',
-    Tímabil: '📊', Prófíll: '👤',
+    Heim:           '⚽',
+    Leikir:         '📅',
+    Áskoranir:      '💪',
+    Tímabilsveðmál: '🏆',
+    Prófíll:        '👤',
   };
   return (
     <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
@@ -45,33 +48,35 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
         tabBarStyle: {
-          backgroundColor: '#111118',
-          borderTopColor: 'rgba(255,255,255,0.08)',
-          height: 80,
+          backgroundColor: '#05060a',
+          borderTopColor: '#1a1d24',
+          borderTopWidth: 1,
+          height: 82,
+          paddingTop: 8,
           paddingBottom: 12,
         },
+        tabBarLabelStyle: { marginBottom: 4, fontSize: 10 },
+        tabBarItemStyle:  { paddingVertical: 4 },
         tabBarActiveTintColor:   '#00e5a0',
         tabBarInactiveTintColor: '#5a5a72',
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
-        tabBarIcon: ({ focused }) => (
-          <TabIcon name={route.name} focused={focused} />
-        ),
       })}
     >
-      <Tab.Screen name="Heim"       component={HomeScreen} />
-      <Tab.Screen name="Leikir"     component={MatchesScreen} />
-      <Tab.Screen name="Áskoranir"  component={ChallengesScreen} />
-      <Tab.Screen name="Stigatafla" component={LeaderboardScreen} />
-      <Tab.Screen name="Vinir"      component={FriendsScreen} />
-      <Tab.Screen name="Deildir"    component={LeaguesScreen} />
-      <Tab.Screen name="Tímabil"    component={SeasonScreen} />
-      <Tab.Screen name="Prófíll"    component={ProfileScreen} />
+      <Tab.Screen name="Heim"           component={HomeScreen} />
+      <Tab.Screen name="Leikir"         component={MatchesScreen} />
+      <Tab.Screen name="Áskoranir"      component={ChallengesScreen} />
+      <Tab.Screen name="Tímabilsveðmál" component={SeasonScreen} />
+      <Tab.Screen name="Prófíll"        component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
 
-export default function RootNavigator() {
+type RootNavigatorProps = {
+  onRouteChange?: (routeName: string) => void;
+};
+
+export default function RootNavigator({ onRouteChange }: RootNavigatorProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -90,13 +95,24 @@ export default function RootNavigator() {
   if (loading) return null;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={() => {
+        const currentRoute = navigationRef.getCurrentRoute();
+        if (currentRoute?.name) {
+          onRouteChange?.(currentRoute.name);
+        }
+      }}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
           <>
-            <Stack.Screen name="Main"    component={MainTabs} />
-            <Stack.Screen name="Admin"   component={AdminScreen} />
-            <Stack.Screen name="Paywall" component={PaywallScreen}
+            <Stack.Screen name="Main"         component={MainTabs} />
+            <Stack.Screen name="Leaderboard"  component={LeaderboardScreen} />
+            <Stack.Screen name="Leagues"      component={LeaguesScreen} />
+            <Stack.Screen name="Friends"      component={FriendsScreen} />
+            <Stack.Screen name="Admin"        component={AdminScreen} />
+            <Stack.Screen name="Paywall"      component={PaywallScreen}
               options={{ presentation: 'modal' }} />
           </>
         ) : (

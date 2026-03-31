@@ -9,7 +9,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform, AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
-import type { NavigationContainerRef } from '@react-navigation/native';
+import type { NavigationContainerRef, NavigationContainerRefWithCurrent } from '@react-navigation/native';
 
 // ── Configure how notifications appear while app is open ──
 Notifications.setNotificationHandler({
@@ -58,7 +58,7 @@ async function setupAndroidChannels() {
 // ── Main hook ─────────────────────────────────────────────────
 export function usePushNotifications(
   userId: string,
-  navigationRef: React.RefObject<NavigationContainerRef<any>>
+  navigationRef: NavigationContainerRefWithCurrent<any>
 ) {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
@@ -75,9 +75,7 @@ export function usePushNotifications(
 
     // ── Foreground notification received ──
     notifListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        const type = notification.request.content.data?.type as string;
-        console.log('[Push] Received in foreground:', type);
+      (_notification) => {
         // Badge update is handled by OS
       }
     );
@@ -112,10 +110,7 @@ export function usePushNotifications(
 
   // ── Register device & save token ─────────────────────────
   async function registerForPushNotifications() {
-    if (!Device.isDevice) {
-      console.log('[Push] Must use physical device for push notifications');
-      return;
-    }
+    if (!Device.isDevice) return;
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -127,18 +122,12 @@ export function usePushNotifications(
 
     setPermissionStatus(finalStatus);
 
-    if (finalStatus !== 'granted') {
-      console.log('[Push] Permission not granted');
-      return;
-    }
+    if (finalStatus !== 'granted') return;
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId
       ?? Constants.easConfig?.projectId;
 
-    if (!projectId) {
-      console.error('[Push] No project ID found in app config');
-      return;
-    }
+    if (!projectId) return;
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     setExpoPushToken(token);
@@ -152,15 +141,12 @@ export function usePushNotifications(
         { onConflict: 'user_id,token' }
       );
 
-    console.log('[Push] Token registered:', token.slice(0, 20) + '...');
   }
 
   // ── Deep link routing on tap ─────────────────────────────
   function handleNotificationTap(data: any) {
-    if (!data || !navigationRef.current) return;
-    const nav = navigationRef.current;
-
-    console.log('[Push] Tapped notification:', data.type);
+    if (!data || !navigationRef.isReady()) return;
+    const nav = navigationRef;
 
     switch (data.type) {
       case 'bet_received':
@@ -168,23 +154,23 @@ export function usePushNotifications(
       case 'bet_declined':
       case 'bet_won':
       case 'bet_lost':
-        nav.navigate('Veðmál');
+        nav.navigate('Main', { screen: 'Áskoranir' });
         break;
 
       case 'challenge_assigned':
       case 'challenge_submitted':
       case 'challenge_approved':
       case 'challenge_rejected':
-        nav.navigate('Veðmál', { screen: 'Áskoranir' });
+        nav.navigate('Main', { screen: 'Áskoranir' });
         break;
 
       case 'friend_request':
       case 'friend_accepted':
-        nav.navigate('Vinir');
+        nav.navigate('Friends');
         break;
 
       default:
-        nav.navigate('Heim');
+        nav.navigate('Main', { screen: 'Heim' });
     }
 
     // Mark as read
@@ -233,6 +219,5 @@ export async function sendPushToUser(params: {
   const { error } = await supabase.functions.invoke('send-push', {
     body: params,
   });
-  if (error) console.error('[Push] Edge function error:', error);
   return { error };
 }

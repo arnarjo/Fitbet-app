@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Animated, StatusBar, Image,
+  RefreshControl, Animated, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -52,24 +52,31 @@ export default function HomeScreen() {
   const feedAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchAll();
+    fetchUpcoming();
     Animated.stagger(120, [
       Animated.spring(heroAnim,  { toValue:1, useNativeDriver:true, damping:18, stiffness:160 }),
       Animated.spring(statsAnim, { toValue:1, useNativeDriver:true, damping:18, stiffness:160 }),
       Animated.spring(feedAnim,  { toValue:1, useNativeDriver:true, damping:18, stiffness:160 }),
     ]).start();
+  }, []);
 
-    // Realtime feed subscription
+  // Fetch user-specific data once profile is available, and keep in sync via realtime
+  useEffect(() => {
+    if (!profile?.id) return;
+    fetchFeed();
+    fetchStats();
+
     const channel = supabase
-      .channel('home_feed')
+      .channel(`home_feed_${profile.id}`)
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications' }, () => fetchFeed())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [profile?.id]);
 
   async function fetchAll() {
     await Promise.all([fetchFeed(), fetchUpcoming(), fetchStats()]);
   }
+
 
   async function fetchFeed() {
     if (!profile?.id) return;
@@ -80,18 +87,32 @@ export default function HomeScreen() {
       .order('created_at', { ascending: false })
       .limit(20);
 
-    // Also fetch friends' activity
-    const { data: friendActivity } = await supabase
-      .from('notifications')
-      .select('*, profile:profiles!user_id(username, full_name)')
-      .neq('user_id', profile.id)
-      .in('type', ['bet_won','bet_lost','challenge_approved'])
-      .order('created_at', { ascending: false })
-      .limit(15);
+    // Fetch friend IDs first, then get their activity
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`)
+      .eq('status', 'accepted');
+
+    const friendIds = (friendships ?? []).map((f: any) =>
+      f.requester_id === profile.id ? f.addressee_id : f.requester_id
+    );
+
+    let friendActivity: any[] = [];
+    if (friendIds.length > 0) {
+      const { data: fa } = await supabase
+        .from('notifications')
+        .select('*, profile:profiles!user_id(username, full_name)')
+        .in('user_id', friendIds)
+        .in('type', ['bet_won', 'bet_lost', 'challenge_approved'])
+        .order('created_at', { ascending: false })
+        .limit(15);
+      friendActivity = fa ?? [];
+    }
 
     const allActivity = [
       ...(data ?? []).map((n: any, i: number) => buildFeedItem(n, true, i)),
-      ...(friendActivity ?? []).map((n: any, i: number) => buildFeedItem(n, false, i + 20)),
+      ...friendActivity.map((n: any, i: number) => buildFeedItem(n, false, i + 20)),
     ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 20);
 
     setFeed(allActivity);
@@ -166,9 +187,8 @@ export default function HomeScreen() {
     setBetModal(true);
   }
 
-  async function handleRematch(betId: string) {
-    // Navigate to the bet and offer rematch
-    navigation.navigate('Veðmál');
+  function handleRematch() {
+    navigation.navigate('Main', { screen: 'Áskoranir' });
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -196,7 +216,7 @@ export default function HomeScreen() {
           </View>
           <View style={s.topBarRight}>
             {(openChallenges > 0 || pendingBets > 0) && (
-              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Veðmál')}>
+              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })}>
                 <View style={s.alertDot} />
                 <Text style={s.alertText}>
                   {openChallenges > 0 ? `${openChallenges} áskorun` : `${pendingBets} veðmál`}
@@ -273,7 +293,7 @@ export default function HomeScreen() {
 
         {/* ── Alert banners ── */}
         {openChallenges > 0 && (
-          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Veðmál')} activeOpacity={0.85}>
+          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>⚠️</Text>
             <View style={{ flex:1 }}>
               <Text style={s.alertBannerTitle}>{openChallenges} áskorun bíður!</Text>
@@ -284,7 +304,7 @@ export default function HomeScreen() {
         )}
 
         {pendingBets > 0 && (
-          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Veðmál')} activeOpacity={0.85}>
+          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>🎯</Text>
             <View style={{ flex:1 }}>
               <Text style={[s.alertBannerTitle, { color:'#3d8bff' }]}>{pendingBets} veðmál bíður svars!</Text>
@@ -350,7 +370,7 @@ export default function HomeScreen() {
                   key={item.id}
                   item={item}
                   isLast={idx === feed.length - 1}
-                  onRematch={() => handleRematch(item.betId ?? '')}
+                  onRematch={handleRematch}
                 />
               ))
             )}

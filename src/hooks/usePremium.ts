@@ -5,6 +5,17 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { isPremium, setupRevenueCat } from '../lib/revenuecat';
 import { useAuth } from './useAuth';
 
+// ── League gating ────────────────────────────────────────────
+export const FREE_LEAGUES = [
+  'Besta deild karla',
+  'Lengjudeild karla',
+];
+
+export const PREMIUM_LEAGUES = [
+  'Premier League',
+  'UEFA Champions League',
+];
+
 // ── Limits ───────────────────────────────────────────────────
 export const FREE_LIMITS = {
   maxLeagues:          2,
@@ -56,6 +67,11 @@ export function usePremium() {
     return limits.customChallenges;
   }
 
+  function canAccessLeague(leagueName: string): boolean {
+    if (premium) return true;
+    return FREE_LEAGUES.includes(leagueName);
+  }
+
   return {
     premium,
     loading,
@@ -64,5 +80,6 @@ export function usePremium() {
     canCreateLeague,
     canUseStrava,
     canUseCustomChallenges,
+    canAccessLeague,
   };
 }

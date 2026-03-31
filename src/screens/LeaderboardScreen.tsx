@@ -71,21 +71,23 @@ export default function LeaderboardScreen() {
   }
 
   async function fetchLeagueBoard(leagueId: string) {
-    // Get members of league, then their profile stats
-    const { data: members } = await supabase
+    const { data: members, error: membersError } = await supabase
       .from('league_members')
       .select('user_id')
       .eq('league_id', leagueId);
 
+    if (membersError) { setLeagueBoard([]); return; }
+
     const ids = (members ?? []).map((m: any) => m.user_id);
     if (ids.length === 0) { setLeagueBoard([]); return; }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('leaderboard')
       .select('*')
       .in('id', ids)
       .limit(100);
-    setLeagueBoard((data ?? []) as LeaderboardEntry[]);
+
+    if (!error) setLeagueBoard((data ?? []) as LeaderboardEntry[]);
   }
 
   const onRefresh = useCallback(async () => {
