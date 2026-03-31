@@ -76,15 +76,17 @@ export default function LeaguesScreen() {
       .select('user_id, role, profile:profiles(*)')
       .eq('league_id', leagueId);
 
-    const entries: any[] = [];
-    for (const m of (data ?? []) as any[]) {
-      const { data: lb } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .eq('id', m.user_id)
-        .single();
-      entries.push({ member: m, entry: lb });
-    }
+    const memberList = (data ?? []) as any[];
+    if (memberList.length === 0) { setMembers([]); return; }
+
+    const ids = memberList.map((m: any) => m.user_id);
+    const { data: lbData } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .in('id', ids);
+
+    const lbMap = new Map(((lbData ?? []) as any[]).map((e: any) => [e.id, e]));
+    const entries = memberList.map((m: any) => ({ member: m, entry: lbMap.get(m.user_id) }));
     entries.sort((a, b) => (b.entry?.total_points ?? 0) - (a.entry?.total_points ?? 0));
     setMembers(entries);
   }

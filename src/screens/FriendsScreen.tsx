@@ -43,7 +43,28 @@ export default function FriendsScreen() {
   const [refreshing, setRefreshing]   = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => { fetchFriends(); }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    fetchFriends();
+
+    const channel = supabase
+      .channel(`friendships:${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `requester_id=eq.${userId}`,
+      }, () => fetchFriends())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `addressee_id=eq.${userId}`,
+      }, () => fetchFriends())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
 
   useEffect(() => {
     if (!search.trim()) { setSearchResults([]); return; }

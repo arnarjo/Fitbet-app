@@ -48,6 +48,10 @@ export default function MatchesScreen() {
   }, [refetch]);
 
   function handleOpenBet(match: Match) {
+    if (!canAccessLeague(match.league_name)) {
+      navigation.navigate('Paywall', { feature: 'general' });
+      return;
+    }
     setSelectedMatch(match);
     setSelectedPrediction(null);
     setModalVisible(true);

@@ -315,6 +315,19 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* ── Friends ── */}
+        <View style={s.section}>
+          <TouchableOpacity
+            style={s.friendsBtn}
+            onPress={() => navigation.navigate('Friends')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.adminBtnIcon}>👥</Text>
+            <Text style={s.friendsBtnText}>Vinir</Text>
+            <Text style={s.settingArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Admin ── */}
         {profile?.is_admin && (
           <View style={s.section}>
@@ -448,6 +461,13 @@ const s = StyleSheet.create({
   },
   adminBtnIcon: { fontSize: 18, width: 24, textAlign: 'center' },
   adminBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#00e5a0' },
+  friendsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#1a1a24', borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  friendsBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#f0f0f8' },
   signOutBtn: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',

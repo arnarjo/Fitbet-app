@@ -14,7 +14,7 @@ export default function FloatingChallengeButton() {
       onPress={() => navigate('Main', { screen: 'Leikir' })}
       activeOpacity={0.9}
     >
-      <Text style={s.fabText}>Skora á vin</Text>
+      <Text style={s.fabText}>Veðja á leik</Text>
     </TouchableOpacity>
   );
 }

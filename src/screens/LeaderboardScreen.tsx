@@ -101,7 +101,8 @@ export default function LeaderboardScreen() {
   const myEntry = displayBoard.find(e => e.id === profile?.id);
 
   const top3 = displayBoard.slice(0, 3);
-  const rest  = displayBoard.slice(3);
+  const showPodium = top3.length >= 3;
+  const rest = showPodium ? displayBoard.slice(3) : displayBoard;
 
   return (
     <SafeAreaView style={s.container}>
@@ -162,7 +163,7 @@ export default function LeaderboardScreen() {
         contentContainerStyle={s.scroll}
       >
         {/* ── Podium top 3 ── */}
-        {top3.length >= 3 && (
+        {showPodium && (
           <Animated.View style={[s.podiumWrap, {
             opacity: podiumAnim,
             transform: [{ scale: podiumAnim.interpolate({ inputRange:[0,1], outputRange:[0.92,1] }) }],
@@ -234,7 +235,7 @@ export default function LeaderboardScreen() {
               <BoardRow
                 key={entry.id}
                 entry={entry}
-                rank={idx + 4}
+                rank={showPodium ? idx + 4 : idx + 1}
                 isMe={entry.id === profile?.id}
               />
             ))}
