@@ -224,8 +224,8 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* ── Friends ── */}
-        <View style={[s.section, { marginTop: -8 }]}>
+        {/* ── Friends & Leagues ── */}
+        <View style={[s.section, { marginTop: -8, gap: 10 }]}>
           <TouchableOpacity
             style={s.friendsBtn}
             onPress={() => navigation.navigate('Friends')}
@@ -235,6 +235,19 @@ export default function ProfileScreen() {
             <View style={{ flex: 1 }}>
               <Text style={s.friendsBtnText}>Vinir</Text>
               <Text style={s.friendsBtnSub}>Skoða og bæta við vinum</Text>
+            </View>
+            <Text style={s.friendsBtnArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.leaguesBtn}
+            onPress={() => navigation.navigate('Leagues')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.friendsBtnIcon}>🏅</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.friendsBtnText}>Deildir</Text>
+              <Text style={s.friendsBtnSub}>Búa til eða ganga í deild</Text>
             </View>
             <Text style={s.friendsBtnArrow}>›</Text>
           </TouchableOpacity>
@@ -465,6 +478,12 @@ const s = StyleSheet.create({
   friendsBtnText: { fontSize: 16, fontWeight: '800', color: '#eef4f8' },
   friendsBtnSub: { fontSize: 11, color: '#4a6878', marginTop: 2 },
   friendsBtnArrow: { fontSize: 22, color: '#47C4EE', fontWeight: '700' },
+  leaguesBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: 'rgba(255,200,69,0.08)', borderRadius: 16,
+    borderWidth: 1.5, borderColor: 'rgba(255,200,69,0.3)',
+    paddingHorizontal: 18, paddingVertical: 16,
+  },
   signOutBtn: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',

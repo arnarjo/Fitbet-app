@@ -1,0 +1,80 @@
+================================================================
+FITBET — GOOGLE PLAY STORE LISTING
+================================================================
+
+--- SHORT DESCRIPTION (80 stafir hámark) ---
+Veðjaðu við vini um líkamsrækt. Hlaup, hjólreiðar, armbeygjur — staðfest með Strava.
+
+
+--- FULL DESCRIPTION (4000 stafir hámark) ---
+FitBet breytir líkamsrækt í leik.
+
+Veðjaðu við vini um líkamsrækt og KSI knattspyrnuleiki. Tabber þú 10 km hlaupi? Geturu klárað 100 armbeygjur? Staðfestu áskoranir sjálfkrafa í gegnum Strava — engin mynd þarf.
+
+🏃 ÁSKORANIR
+• Hlaup, hjólreiðar, armbeygjur, hnébeygjur og burpees
+• Tengdu Strava og æfingar staðfestast sjálfkrafa
+• Deildu sönnunarmyndum þegar Strava er ekki tengt
+
+⚽ TÍMABILSVEÐMÁL
+• Spáðu í KSI Úrvalsdeild og Bestu deild karla
+• Veðjaðu á hvaða lið endar ofar gegn vinum þínum
+• KSI liðsmerki og rauntíma leikjadagatal
+
+🏆 STIGATAFLA
+• Heimsstigatafla með pódíum
+• Vinastigatafla — sjáðu hvernig þú stendur þér gagnvart vinum
+• Einkabikar deildir — búðu til deild með vinnufélögum eða fjölskyldu
+
+💪 VERÐLAUN
+• Opnaðu verðlaun fyrir sigra og áskoranir
+• Safnaðu stigum og klifraðu upp stigatöfluna
+
+📱 EINFALT OG HRATT
+• Stofnaðu reikning á nokkrum sekúndum
+• Bjóddu vinum beint í gegnum appið
+• Myrkur útlit, hannað fyrir Íslendinga
+
+FitBet er þróað á Íslandi fyrir Íslendinga.
+
+Hafðu samband: support@fitbet.is
+
+
+--- APP CATEGORY ---
+Health & Fitness
+
+
+--- TAGS / KEYWORDS ---
+líkamsrækt, veðmál, strava, hlaup, KSI, knattspyrna, fitness, bet, workout, challenge
+
+
+--- CONTENT RATING SPURNINGAR (fyrir Google Play Console) ---
+Violence: No
+Sexual content: No
+Profanity: No
+Controlled substances: No
+User-generated content: Yes (bet challenges, proof photos)
+Social features: Yes (friends, leaderboard)
+Location sharing: No
+Purchases: No (no in-app purchases currently)
+Target age: 13+
+
+
+--- SCREENSHOTS sem þarf (minnst 2, mælt með 8) ---
+1. Heimaskjár með áskorunum og season banner
+2. Stigatafla með pódíum
+3. Áskorun búin til — 2-þrepa val (tegund → magn)
+4. Tímabilsveðmál — KSI deildir með liðsmerkjum
+5. Veðmál staðfest / send
+6. Prófíll með verðlaunum og stigum
+7. Vinastigatafla
+8. Strava tenging
+
+
+--- CONTACT INFO ---
+Email: support@fitbet.is
+Website: https://fitbet.is
+Privacy Policy: https://fitbet.is/privacy
+
+
+================================================================

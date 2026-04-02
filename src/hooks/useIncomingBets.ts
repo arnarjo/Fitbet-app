@@ -72,6 +72,19 @@ export function useIncomingBets(userId: string) {
     return { error: null };
   }
 
+  async function cancelBet(betId: string) {
+    const { error } = await supabase
+      .from('bets')
+      .update({ status: 'cancelled' })
+      .eq('id', betId)
+      .eq('challenger_id', userId)
+      .eq('status', 'pending');
+
+    if (error) return { error };
+    await fetchIncomingBets();
+    return { error: null };
+  }
+
   useEffect(() => {
     fetchIncomingBets();
   }, [userId]);
@@ -82,5 +95,6 @@ export function useIncomingBets(userId: string) {
     loading,
     refetch: fetchIncomingBets,
     respondToBet,
+    cancelBet,
   };
 }

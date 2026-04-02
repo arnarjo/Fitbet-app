@@ -29,7 +29,7 @@ type PendingAccept = {
 
 export default function ChallengesScreen() {
   const { profile } = useAuth();
-  const { bets, outgoingBets, loading, refetch, respondToBet } = useIncomingBets(profile?.id ?? '');
+  const { bets, outgoingBets, loading, refetch, respondToBet, cancelBet } = useIncomingBets(profile?.id ?? '');
 
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing'>('incoming');
   const [pendingAccept, setPendingAccept] = useState<PendingAccept | null>(null);
@@ -254,15 +254,35 @@ export default function ChallengesScreen() {
                     )}
                   </View>
 
-                  <View style={s.doneRow}>
-                    <Text style={s.doneText}>
-                      {status === 'pending'
-                        ? 'Bíður svars frá vin.'
-                        : status === 'accepted'
-                        ? 'Vinurinn samþykkti veðmálið.'
-                        : 'Vinurinn hafnaði veðmálinu.'}
-                    </Text>
-                  </View>
+                  {status === 'pending' ? (
+                    <View style={s.actionsRow}>
+                      <Text style={[s.doneText, { flex: 1 }]}>Bíður svars frá vin.</Text>
+                      <TouchableOpacity
+                        style={s.retractBtn}
+                        onPress={() => Alert.alert(
+                          'Afturkalla veðmál',
+                          'Ertu viss um að þú viljir afturkalla þetta veðmál?',
+                          [
+                            { text: 'Hætta við', style: 'cancel' },
+                            { text: 'Afturkalla', style: 'destructive', onPress: async () => {
+                              const { error } = await cancelBet(item.id);
+                              if (error) Alert.alert('Villa', 'Ekki tókst að afturkalla veðmál.');
+                            }},
+                          ]
+                        )}
+                      >
+                        <Text style={s.retractBtnText}>Afturkalla</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={s.doneRow}>
+                      <Text style={s.doneText}>
+                        {status === 'accepted'
+                          ? 'Vinurinn samþykkti veðmálið.'
+                          : 'Vinurinn hafnaði veðmálinu.'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               );
             }}
@@ -391,6 +411,12 @@ const s = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center',
   },
   rejectBtnText: { color: '#c5c8d4', fontSize: 14, fontWeight: '700' },
+  retractBtn: {
+    backgroundColor: 'rgba(255,74,110,0.1)', borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,74,110,0.25)',
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  retractBtnText: { color: '#ff4a6e', fontSize: 13, fontWeight: '700' },
   acceptBtn: {
     flex: 2, backgroundColor: '#21A56A', borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',

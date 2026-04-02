@@ -186,9 +186,14 @@ export default function SeasonScreen() {
     : [];
   const accentColor = LEAGUE_COLOR[activeLeagueKey];
 
-  // Standings: combine my bets + friend bets, dedupe, group by user
+  // Flat team lookup by ID
+  const allTeams = Object.values(teamsByLeague).flat();
+  const teamById: Record<string, string> = {};
+  for (const t of allTeams) teamById[t.id] = t.name;
+
+  // Standings: combine my bets + friend bets, group by user
   const allBets = [...myBets, ...friendBets];
-  const standingsMap: Record<string, { name: string; picks: { league: string; team: string; vs: string }[] }> = {};
+  const standingsMap: Record<string, { name: string; picks: { league: string; team: string }[] }> = {};
   for (const bet of allBets) {
     const isMe = bet.challenger_id === profile?.id;
     const userId = bet.challenger_id;
@@ -197,10 +202,10 @@ export default function SeasonScreen() {
       : ((bet as any).challenger?.full_name ?? (bet as any).challenger?.username ?? '?');
     if (!standingsMap[userId]) standingsMap[userId] = { name: userName, picks: [] };
     if (bet.challenger_pick) {
+      const teamName = teamById[bet.challenger_pick] ?? bet.challenger_pick;
       standingsMap[userId].picks.push({
         league: (bet as any).market?.league_name ?? '',
-        team: bet.challenger_pick,
-        vs: bet.opponent_pick ?? '?',
+        team: teamName,
       });
     }
   }

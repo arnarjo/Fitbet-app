@@ -32,8 +32,8 @@ export default function LeaderboardScreen() {
   const podiumAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    if (profile?.id) fetchAll();
+  }, [profile?.id]);
 
   useEffect(() => {
     if (global.length > 0) {
