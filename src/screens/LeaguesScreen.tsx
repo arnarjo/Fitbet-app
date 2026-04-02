@@ -13,7 +13,7 @@ import type { League, LeagueMember, LeaderboardEntry } from '../types/database';
 type LeagueTab = 'members' | 'bets' | 'board';
 
 const LEAGUE_ICONS = ['⚽', '🏆', '💼', '🎯', '🔥', '🏅'];
-const AVATAR_COLORS = ['#00e5a0','#3d8bff','#ff4a6e','#ffc940','#a855f7','#ff9f40'];
+const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
@@ -212,7 +212,7 @@ export default function LeaguesScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#00e5a0" style={{ marginTop: 60 }} />
+        <ActivityIndicator color="#21A56A" style={{ marginTop: 60 }} />
       ) : leagues.length === 0 ? (
         <View style={s.emptyFull}>
           <Text style={s.emptyIcon}>🏅</Text>
@@ -247,7 +247,7 @@ export default function LeaguesScreen() {
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={s.scroll}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#21A56A" />}
             >
               {/* League info */}
               <View style={s.leagueInfoCard}>
@@ -310,8 +310,8 @@ export default function LeaguesScreen() {
                         <View style={s.boardInfo}>
                           <Text style={s.boardName}>
                             {p?.full_name ?? p?.username}
-                            {isMe && <Text style={{ color: '#00e5a0' }}> (þú)</Text>}
-                            {item.member.role === 'admin' && <Text style={{ color: '#ffc940' }}> ★</Text>}
+                            {isMe && <Text style={{ color: '#21A56A' }}> (þú)</Text>}
+                            {item.member.role === 'admin' && <Text style={{ color: '#FFC845' }}> ★</Text>}
                           </Text>
                           <Text style={s.boardSub}>
                             {entry?.total_wins ?? 0}S · {entry?.total_losses ?? 0}T
@@ -341,7 +341,7 @@ export default function LeaguesScreen() {
                         <View style={s.boardInfo}>
                           <Text style={s.boardName}>
                             {p?.full_name ?? p?.username}
-                            {isMe && <Text style={{ color: '#00e5a0' }}> (þú)</Text>}
+                            {isMe && <Text style={{ color: '#21A56A' }}> (þú)</Text>}
                           </Text>
                           <Text style={s.boardSub}>@{p?.username}</Text>
                         </View>
@@ -383,7 +383,7 @@ export default function LeaguesScreen() {
             <TextInput
               style={s.textInput}
               placeholder="t.d. Vinarnir eða Vinnufélagar"
-              placeholderTextColor="#3a3a52"
+              placeholderTextColor="#2a4050"
               value={newName}
               onChangeText={setNewName}
             />
@@ -431,7 +431,7 @@ export default function LeaguesScreen() {
             <TextInput
               style={s.textInput}
               placeholder="t.d. abc12345"
-              placeholderTextColor="#3a3a52"
+              placeholderTextColor="#2a4050"
               value={inviteCode}
               onChangeText={setInviteCode}
               autoCapitalize="none"
@@ -455,20 +455,20 @@ export default function LeaguesScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12,
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#f0f0f8' },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#eef4f8' },
   headerBtns: { flexDirection: 'row', gap: 8 },
   joinBtn: {
     backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
-  joinBtnText: { fontSize: 12, fontWeight: '700', color: '#f0f0f8' },
-  createBtn: { backgroundColor: '#00e5a0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+  joinBtnText: { fontSize: 12, fontWeight: '700', color: '#eef4f8' },
+  createBtn: { backgroundColor: '#21A56A', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
   createBtnText: { fontSize: 12, fontWeight: '800', color: '#000' },
   leagueScroll: { flexGrow: 0 },
   leagueScrollContent: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
@@ -477,37 +477,37 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
-  leagueTabActive: { backgroundColor: 'rgba(0,229,160,0.1)', borderColor: 'rgba(0,229,160,0.3)' },
+  leagueTabActive: { backgroundColor: 'rgba(33,165,106,0.1)', borderColor: 'rgba(33,165,106,0.3)' },
   leagueTabIcon: { fontSize: 14 },
-  leagueTabText: { fontSize: 12, fontWeight: '700', color: '#5a5a72' },
-  leagueTabTextActive: { color: '#00e5a0' },
+  leagueTabText: { fontSize: 12, fontWeight: '700', color: '#4a6878' },
+  leagueTabTextActive: { color: '#21A56A' },
   scroll: { paddingHorizontal: 16 },
   leagueInfoCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#1a1a24', borderRadius: 14,
+    backgroundColor: '#0d2030', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     padding: 14, marginBottom: 14,
   },
   leagueInfoLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   leagueInfoIcon: { fontSize: 28 },
-  leagueInfoName: { fontSize: 16, fontWeight: '800', color: '#f0f0f8' },
-  leagueInfoType: { fontSize: 11, color: '#5a5a72', marginTop: 3 },
+  leagueInfoName: { fontSize: 16, fontWeight: '800', color: '#eef4f8' },
+  leagueInfoType: { fontSize: 11, color: '#4a6878', marginTop: 3 },
   inviteBtn: {
-    backgroundColor: 'rgba(0,229,160,0.1)', borderWidth: 1,
-    borderColor: 'rgba(0,229,160,0.2)',
+    backgroundColor: 'rgba(33,165,106,0.1)', borderWidth: 1,
+    borderColor: 'rgba(33,165,106,0.2)',
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
-  inviteBtnText: { fontSize: 12, fontWeight: '700', color: '#00e5a0' },
+  inviteBtnText: { fontSize: 12, fontWeight: '700', color: '#21A56A' },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   tab: {
     flex: 1, paddingVertical: 9, borderRadius: 12,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center',
   },
-  tabActive: { backgroundColor: 'rgba(0,229,160,0.1)', borderColor: 'rgba(0,229,160,0.3)' },
-  tabText: { fontSize: 12, fontWeight: '700', color: '#5a5a72' },
-  tabTextActive: { color: '#00e5a0' },
+  tabActive: { backgroundColor: 'rgba(33,165,106,0.1)', borderColor: 'rgba(33,165,106,0.3)' },
+  tabText: { fontSize: 12, fontWeight: '700', color: '#4a6878' },
+  tabTextActive: { color: '#21A56A' },
   boardCard: {
-    backgroundColor: '#1a1a24', borderRadius: 16,
+    backgroundColor: '#0d2030', borderRadius: 16,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
     marginBottom: 12,
   },
@@ -516,18 +516,18 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
-  boardRowMe: { backgroundColor: 'rgba(0,229,160,0.05)' },
-  boardRank: { fontSize: 14, fontWeight: '800', color: '#5a5a72', width: 30, textAlign: 'center' },
+  boardRowMe: { backgroundColor: 'rgba(33,165,106,0.05)' },
+  boardRank: { fontSize: 14, fontWeight: '800', color: '#4a6878', width: 30, textAlign: 'center' },
   boardAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   boardAvatarText: { fontSize: 12, fontWeight: '800' },
   boardInfo: { flex: 1 },
-  boardName: { fontSize: 14, fontWeight: '700', color: '#f0f0f8' },
-  boardSub: { fontSize: 11, color: '#5a5a72', marginTop: 2 },
-  boardPts: { fontSize: 18, fontWeight: '900', color: '#00e5a0' },
-  adminBadge: { backgroundColor: 'rgba(255,201,64,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
-  adminBadgeText: { fontSize: 10, fontWeight: '700', color: '#ffc940' },
+  boardName: { fontSize: 14, fontWeight: '700', color: '#eef4f8' },
+  boardSub: { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  boardPts: { fontSize: 18, fontWeight: '900', color: '#21A56A' },
+  adminBadge: { backgroundColor: 'rgba(255,200,69,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
+  adminBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFC845' },
   memberBadge: { backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
-  memberBadgeText: { fontSize: 10, fontWeight: '600', color: '#5a5a72' },
+  memberBadgeText: { fontSize: 10, fontWeight: '600', color: '#4a6878' },
   leaveBtn: {
     backgroundColor: 'rgba(255,74,110,0.07)', borderWidth: 1,
     borderColor: 'rgba(255,74,110,0.15)',
@@ -536,34 +536,34 @@ const s = StyleSheet.create({
   leaveBtnText: { fontSize: 13, fontWeight: '700', color: '#ff4a6e' },
   emptyFull: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 80 },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#f0f0f8' },
-  emptySub: { fontSize: 13, color: '#5a5a72', textAlign: 'center', paddingHorizontal: 24 },
-  emptyBtn: { backgroundColor: '#00e5a0', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginTop: 4 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#eef4f8' },
+  emptySub: { fontSize: 13, color: '#4a6878', textAlign: 'center', paddingHorizontal: 24 },
+  emptyBtn: { backgroundColor: '#21A56A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginTop: 4 },
   emptyBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
-  modal: { flex: 1, backgroundColor: '#0a0a0f' },
+  modal: { flex: 1, backgroundColor: '#071D2A' },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#f0f0f8' },
-  modalClose: { fontSize: 20, color: '#5a5a72', fontWeight: '700' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#eef4f8' },
+  modalClose: { fontSize: 20, color: '#4a6878', fontWeight: '700' },
   modalBody: { padding: 20 },
-  fieldLabel: { fontSize: 10, fontWeight: '700', color: '#5a5a72', letterSpacing: 1.5, marginBottom: 10 },
+  fieldLabel: { fontSize: 10, fontWeight: '700', color: '#4a6878', letterSpacing: 1.5, marginBottom: 10 },
   textInput: {
-    backgroundColor: '#1a1a24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12, padding: 14, color: '#f0f0f8', fontSize: 14, marginBottom: 18,
+    backgroundColor: '#0d2030', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12, padding: 14, color: '#eef4f8', fontSize: 14, marginBottom: 18,
   },
-  fieldHint: { fontSize: 12, color: '#5a5a72', marginTop: -12, marginBottom: 18 },
+  fieldHint: { fontSize: 12, color: '#4a6878', marginTop: -12, marginBottom: 18 },
   typeRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   typeBtn: {
-    flex: 1, backgroundColor: '#1a1a24', borderWidth: 1.5,
+    flex: 1, backgroundColor: '#0d2030', borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)', borderRadius: 14,
     padding: 14, alignItems: 'center', gap: 6,
   },
-  typeBtnActive: { borderColor: '#00e5a0', backgroundColor: 'rgba(0,229,160,0.07)' },
+  typeBtnActive: { borderColor: '#21A56A', backgroundColor: 'rgba(33,165,106,0.07)' },
   typeBtnIcon: { fontSize: 24 },
-  typeBtnText: { fontSize: 13, fontWeight: '700', color: '#9090aa' },
-  typeBtnTextActive: { color: '#00e5a0' },
-  submitBtn: { backgroundColor: '#00e5a0', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  typeBtnText: { fontSize: 13, fontWeight: '700', color: '#7a9aaa' },
+  typeBtnTextActive: { color: '#21A56A' },
+  submitBtn: { backgroundColor: '#21A56A', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   submitBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
 });

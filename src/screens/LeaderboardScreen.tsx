@@ -9,10 +9,10 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import type { LeaderboardEntry, League } from '../types/database';
 
-type Tab = 'global' | 'league';
+type Tab = 'global' | 'friends' | 'league';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
-const AVATAR_COLORS = ['#00e5a0','#3d8bff','#ff4a6e','#ffc940','#a855f7','#ff9f40'];
+const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
@@ -22,6 +22,7 @@ export default function LeaderboardScreen() {
   const { profile } = useAuth();
   const [tab, setTab]               = useState<Tab>('global');
   const [global, setGlobal]         = useState<LeaderboardEntry[]>([]);
+  const [friendsBoard, setFriendsBoard] = useState<LeaderboardEntry[]>([]);
   const [leagues, setLeagues]       = useState<League[]>([]);
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [leagueBoard, setLeagueBoard]   = useState<LeaderboardEntry[]>([]);
@@ -44,8 +45,26 @@ export default function LeaderboardScreen() {
 
   async function fetchAll() {
     setLoading(true);
-    await Promise.all([fetchGlobal(), fetchLeagues()]);
+    await Promise.all([fetchGlobal(), fetchLeagues(), fetchFriendsBoard()]);
     setLoading(false);
+  }
+
+  async function fetchFriendsBoard() {
+    if (!profile?.id) return;
+    const { data } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`);
+    const friendIds = (data ?? []).map((f: any) =>
+      f.requester_id === profile.id ? f.addressee_id : f.requester_id
+    );
+    const ids = [profile.id, ...friendIds];
+    const { data: board } = await supabase
+      .from('leaderboard')
+      .select('*')
+      .in('id', ids);
+    setFriendsBoard((board ?? []) as LeaderboardEntry[]);
   }
 
   async function fetchGlobal() {
@@ -96,7 +115,7 @@ export default function LeaderboardScreen() {
     setRefreshing(false);
   }, [profile?.id]);
 
-  const displayBoard = tab === 'global' ? global : leagueBoard;
+  const displayBoard = tab === 'global' ? global : tab === 'friends' ? friendsBoard : leagueBoard;
   const myRank = displayBoard.findIndex(e => e.id === profile?.id) + 1;
   const myEntry = displayBoard.find(e => e.id === profile?.id);
 
@@ -123,8 +142,14 @@ export default function LeaderboardScreen() {
           style={[s.tab, tab === 'global' && s.tabActive]}
           onPress={() => setTab('global')}
         >
-          <Text style={[s.tabText, tab === 'global' && s.tabTextActive]}>
-            Heimur
+          <Text style={[s.tabText, tab === 'global' && s.tabTextActive]}>Heimur</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.tab, tab === 'friends' && s.tabActive]}
+          onPress={() => setTab('friends')}
+        >
+          <Text style={[s.tabText, tab === 'friends' && s.tabTextActive]}>
+            Vinir ({friendsBoard.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -247,7 +272,7 @@ export default function LeaderboardScreen() {
             <Text style={s.emptyIcon}>🏆</Text>
             <Text style={s.emptyTitle}>Engar færslur ennþá</Text>
             <Text style={s.emptySub}>
-              {tab === 'league' ? 'Enginn í þessari deild hefur safnað stigum' : 'Farðu og veðjaðu!'}
+              {tab === 'league' ? 'Enginn í þessari deild hefur safnað stigum' : tab === 'friends' ? 'Bættu við vinum í Prófíl flipanum' : 'Farðu og veðjaðu!'}
             </Text>
           </View>
         )}

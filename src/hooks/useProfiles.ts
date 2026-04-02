@@ -23,7 +23,6 @@ export function useProfiles(currentUserId?: string) {
         .order('username', { ascending: true });
 
       if (error) {
-        console.log('useProfiles error', error);
         setProfiles([]);
       } else {
         setProfiles((data as Profile[]) ?? []);

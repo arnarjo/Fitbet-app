@@ -99,19 +99,44 @@ export default function AdminScreen() {
       Alert.alert('Villa', 'Veldu niðurstöðu leiks'); return;
     }
     setSettling(true);
-    await supabase.from('matches').update({
+
+    const { error: matchError } = await supabase.from('matches').update({
       status: 'finished', result: settleResult,
       home_score: parseInt(homeScore) || 0,
       away_score: parseInt(awayScore) || 0,
     }).eq('id', settleMatch.id);
 
-    const { data: betIds } = await supabase.from('bets').select('id').eq('match_id', settleMatch.id).eq('status', 'accepted');
-    for (const b of betIds ?? []) {
-      await supabase.rpc('settle_bet', { p_bet_id: b.id, p_match_result: settleResult });
+    if (matchError) {
+      setSettling(false);
+      Alert.alert('Villa', `Ekki tókst að uppfæra leik: ${matchError.message}`);
+      return;
     }
+
+    const { data: betIds, error: betsError } = await supabase
+      .from('bets').select('id').eq('match_id', settleMatch.id).eq('status', 'accepted');
+
+    if (betsError) {
+      setSettling(false);
+      Alert.alert('Villa', `Leikur uppfærður en ekki tókst að sækja veðmál: ${betsError.message}`);
+      return;
+    }
+
+    let settled = 0;
+    let failed = 0;
+    for (const b of betIds ?? []) {
+      const { error: rpcError } = await supabase.rpc('settle_bet', { p_bet_id: b.id, p_match_result: settleResult });
+      if (rpcError) failed++;
+      else settled++;
+    }
+
     setSettling(false);
     setSettleMatch(null); setSettleResult(null);
-    Alert.alert('Gert! ✅', `Leikur gerður upp. ${(betIds ?? []).length} veðmál uppgerð.`);
+
+    if (failed > 0) {
+      Alert.alert('Að hluta gert ⚠️', `${settled} veðmál uppgerð, ${failed} mistókust. Athugaðu handvirkt.`);
+    } else {
+      Alert.alert('Gert! ✅', `Leikur gerður upp. ${settled} veðmál uppgerð.`);
+    }
     await fetchAll();
   }
 
@@ -170,7 +195,7 @@ export default function AdminScreen() {
       </View>
 
       {loading ? (
-        <View style={s.loadingState}><ActivityIndicator color="#00e5a0" size="large" /></View>
+        <View style={s.loadingState}><ActivityIndicator color="#21A56A" size="large" /></View>
       ) : (
         <ScrollView style={s.list} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
 
@@ -233,8 +258,8 @@ export default function AdminScreen() {
                 <View key={mk.id} style={s.marketRow}>
                   <View style={s.marketTop}>
                     <Text style={s.marketTitle}>{mk.title}</Text>
-                    <View style={[s.marketStatus, { backgroundColor: mk.status==='open' ? 'rgba(0,229,160,0.12)' : mk.status==='locked' ? 'rgba(255,201,64,0.12)' : 'rgba(255,255,255,0.07)' }]}>
-                      <Text style={[s.marketStatusText, { color: mk.status==='open' ? '#00e5a0' : mk.status==='locked' ? '#ffc940' : '#9090aa' }]}>
+                    <View style={[s.marketStatus, { backgroundColor: mk.status==='open' ? 'rgba(33,165,106,0.12)' : mk.status==='locked' ? 'rgba(255,200,69,0.12)' : 'rgba(255,255,255,0.07)' }]}>
+                      <Text style={[s.marketStatusText, { color: mk.status==='open' ? '#21A56A' : mk.status==='locked' ? '#FFC845' : '#7a9aaa' }]}>
                         {mk.status==='open' ? 'Opinn' : mk.status==='locked' ? 'Læstur' : 'Gert upp'}
                       </Text>
                     </View>
@@ -243,7 +268,7 @@ export default function AdminScreen() {
                   <View style={s.marketActions}>
                     {mk.status === 'open' && (
                       <TouchableOpacity style={s.marketBtn} onPress={() => lockMarket(mk.id)}>
-                        <Text style={[s.marketBtnText, { color: '#ffc940' }]}>🔒 Læsa</Text>
+                        <Text style={[s.marketBtnText, { color: '#FFC845' }]}>🔒 Læsa</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -326,7 +351,7 @@ export default function AdminScreen() {
                 { key:'away', label: settleMatch?.away_team?.name ?? 'Útlið', selClass:'sel-away' },
               ].map(r => (
                 <TouchableOpacity key={r.key} style={[s.resultBtn, settleResult===r.key && (r.key==='home' ? s.resultBtnHome : r.key==='draw' ? s.resultBtnDraw : s.resultBtnAway)]} onPress={() => setSettleResult(r.key as any)}>
-                  <Text style={[s.resultBtnText, settleResult===r.key && { color: r.key==='home'?'#00e5a0':r.key==='draw'?'#ffc940':'#3d8bff' }]}>{r.label}</Text>
+                  <Text style={[s.resultBtnText, settleResult===r.key && { color: r.key==='home'?'#21A56A':r.key==='draw'?'#FFC845':'#47C4EE' }]}>{r.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -357,7 +382,7 @@ export default function AdminScreen() {
           </View>
           <ScrollView style={s.modalBody} keyboardShouldPersistTaps="handled">
             <Text style={s.fieldLabel}>TITILL</Text>
-            <TextInput style={s.textInput} value={marketTitle} onChangeText={setMarketTitle} placeholder="t.d. Besta deild 2026 – Meistari" placeholderTextColor="#3a3a52" />
+            <TextInput style={s.textInput} value={marketTitle} onChangeText={setMarketTitle} placeholder="t.d. Besta deild 2026 – Meistari" placeholderTextColor="#2a4050" />
             <Text style={s.fieldLabel}>TEGUND</Text>
             <View style={s.optRow}>
               {MARKET_TYPES.map(mt => (
@@ -367,7 +392,7 @@ export default function AdminScreen() {
               ))}
             </View>
             <Text style={s.fieldLabel}>LIÐ (aðskilið með kommu)</Text>
-            <TextInput style={[s.textInput, { height: 60 }]} value={marketTeams} onChangeText={setMarketTeams} placeholder="ÍA, FH, Valur, Breiðablik, KR" placeholderTextColor="#3a3a52" multiline />
+            <TextInput style={[s.textInput, { height: 60 }]} value={marketTeams} onChangeText={setMarketTeams} placeholder="ÍA, FH, Valur, Breiðablik, KR" placeholderTextColor="#2a4050" multiline />
             <TouchableOpacity style={[s.saveBtn, savingMarket && { opacity:0.6 }]} onPress={saveMarket} disabled={savingMarket}>
               {savingMarket ? <ActivityIndicator color="#000" /> : <Text style={s.saveBtnText}>Búa til markað 📅</Text>}
             </TouchableOpacity>
@@ -382,76 +407,76 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('is-IS', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 }
 function statusColor(s: string) {
-  return s==='finished'?'#9090aa':s==='live'?'#ff4a6e':'#3d8bff';
+  return s==='finished'?'#7a9aaa':s==='live'?'#ff4a6e':'#47C4EE';
 }
 
 const s = StyleSheet.create({
-  container:{ flex:1, backgroundColor:'#0a0a0f' },
+  container:{ flex:1, backgroundColor:'#071D2A' },
   header:{ flexDirection:'row', alignItems:'center', gap:10, paddingHorizontal:20, paddingTop:4, paddingBottom:10 },
-  headerTitle:{ fontSize:28, fontWeight:'800', color:'#f0f0f8' },
+  headerTitle:{ fontSize:28, fontWeight:'800', color:'#eef4f8' },
   adminBadge:{ backgroundColor:'rgba(168,85,247,0.15)', paddingHorizontal:10, paddingVertical:4, borderRadius:20 },
   adminBadgeText:{ fontSize:11, fontWeight:'800', color:'#a855f7' },
   tabRow:{ flexDirection:'row', paddingHorizontal:16, gap:8, marginBottom:12 },
   tab:{ flex:1, paddingVertical:9, borderRadius:12, borderWidth:1, borderColor:'rgba(255,255,255,0.08)', alignItems:'center' },
-  tabActive:{ backgroundColor:'rgba(0,229,160,0.1)', borderColor:'rgba(0,229,160,0.3)' },
-  tabText:{ fontSize:11, fontWeight:'700', color:'#5a5a72' },
-  tabTextActive:{ color:'#00e5a0' },
+  tabActive:{ backgroundColor:'rgba(33,165,106,0.1)', borderColor:'rgba(33,165,106,0.3)' },
+  tabText:{ fontSize:11, fontWeight:'700', color:'#4a6878' },
+  tabTextActive:{ color:'#21A56A' },
   list:{ flex:1 },
   listContent:{ paddingHorizontal:16 },
   loadingState:{ flex:1, alignItems:'center', justifyContent:'center' },
-  addBtn:{ backgroundColor:'#00e5a0', borderRadius:12, padding:13, alignItems:'center', marginBottom:14 },
+  addBtn:{ backgroundColor:'#21A56A', borderRadius:12, padding:13, alignItems:'center', marginBottom:14 },
   addBtnText:{ color:'#000', fontWeight:'800', fontSize:14 },
-  matchRow:{ flexDirection:'row', alignItems:'center', backgroundColor:'#1a1a24', borderRadius:12, padding:14, marginBottom:8, gap:10 },
-  settleRow:{ borderColor:'rgba(255,201,64,0.2)', borderWidth:1 },
+  matchRow:{ flexDirection:'row', alignItems:'center', backgroundColor:'#0d2030', borderRadius:12, padding:14, marginBottom:8, gap:10 },
+  settleRow:{ borderColor:'rgba(255,200,69,0.2)', borderWidth:1 },
   matchRowLeft:{ flex:1 },
-  matchRowTeams:{ fontSize:14, fontWeight:'700', color:'#f0f0f8' },
-  matchRowMeta:{ fontSize:11, color:'#5a5a72', marginTop:3 },
+  matchRowTeams:{ fontSize:14, fontWeight:'700', color:'#eef4f8' },
+  matchRowMeta:{ fontSize:11, color:'#4a6878', marginTop:3 },
   matchStatus:{ paddingHorizontal:10, paddingVertical:4, borderRadius:20 },
   matchStatusText:{ fontSize:11, fontWeight:'700' },
-  settleBtn:{ backgroundColor:'rgba(255,201,64,0.12)', borderWidth:1, borderColor:'rgba(255,201,64,0.25)', paddingHorizontal:14, paddingVertical:8, borderRadius:10 },
-  settleBtnText:{ color:'#ffc940', fontWeight:'700', fontSize:12 },
-  marketRow:{ backgroundColor:'#1a1a24', borderRadius:12, padding:14, marginBottom:8 },
+  settleBtn:{ backgroundColor:'rgba(255,200,69,0.12)', borderWidth:1, borderColor:'rgba(255,200,69,0.25)', paddingHorizontal:14, paddingVertical:8, borderRadius:10 },
+  settleBtnText:{ color:'#FFC845', fontWeight:'700', fontSize:12 },
+  marketRow:{ backgroundColor:'#0d2030', borderRadius:12, padding:14, marginBottom:8 },
   marketTop:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:4 },
-  marketTitle:{ fontSize:14, fontWeight:'700', color:'#f0f0f8', flex:1, marginRight:8 },
+  marketTitle:{ fontSize:14, fontWeight:'700', color:'#eef4f8', flex:1, marginRight:8 },
   marketStatus:{ paddingHorizontal:9, paddingVertical:3, borderRadius:20 },
   marketStatusText:{ fontSize:10, fontWeight:'700' },
-  marketMeta:{ fontSize:11, color:'#5a5a72', marginBottom:8 },
+  marketMeta:{ fontSize:11, color:'#4a6878', marginBottom:8 },
   marketActions:{ flexDirection:'row', gap:8 },
-  marketBtn:{ backgroundColor:'rgba(255,201,64,0.08)', borderWidth:1, borderColor:'rgba(255,201,64,0.2)', paddingHorizontal:12, paddingVertical:7, borderRadius:10 },
+  marketBtn:{ backgroundColor:'rgba(255,200,69,0.08)', borderWidth:1, borderColor:'rgba(255,200,69,0.2)', paddingHorizontal:12, paddingVertical:7, borderRadius:10 },
   marketBtnText:{ fontSize:12, fontWeight:'700' },
   emptyState:{ alignItems:'center', paddingTop:60, gap:12 },
   emptyIcon:{ fontSize:44 },
-  emptyTitle:{ fontSize:16, fontWeight:'700', color:'#f0f0f8' },
-  modal:{ flex:1, backgroundColor:'#0a0a0f' },
+  emptyTitle:{ fontSize:16, fontWeight:'700', color:'#eef4f8' },
+  modal:{ flex:1, backgroundColor:'#071D2A' },
   modalHeader:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:20, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.07)' },
-  modalTitle:{ fontSize:20, fontWeight:'800', color:'#f0f0f8' },
-  modalClose:{ fontSize:20, color:'#5a5a72', fontWeight:'700' },
+  modalTitle:{ fontSize:20, fontWeight:'800', color:'#eef4f8' },
+  modalClose:{ fontSize:20, color:'#4a6878', fontWeight:'700' },
   modalBody:{ padding:20 },
-  fieldLabel:{ fontSize:10, fontWeight:'700', color:'#5a5a72', letterSpacing:1.5, marginBottom:8 },
+  fieldLabel:{ fontSize:10, fontWeight:'700', color:'#4a6878', letterSpacing:1.5, marginBottom:8 },
   optRow:{ flexDirection:'row', flexWrap:'wrap', gap:7, marginBottom:16 },
-  optChip:{ backgroundColor:'#1a1a24', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:20, paddingHorizontal:12, paddingVertical:6 },
-  optChipActive:{ backgroundColor:'rgba(0,229,160,0.1)', borderColor:'#00e5a0' },
-  optChipText:{ fontSize:12, fontWeight:'600', color:'#9090aa' },
-  optChipTextActive:{ color:'#00e5a0' },
+  optChip:{ backgroundColor:'#0d2030', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:20, paddingHorizontal:12, paddingVertical:6 },
+  optChipActive:{ backgroundColor:'rgba(33,165,106,0.1)', borderColor:'#21A56A' },
+  optChipText:{ fontSize:12, fontWeight:'600', color:'#7a9aaa' },
+  optChipTextActive:{ color:'#21A56A' },
   teamRow:{ flexDirection:'row', gap:7, paddingBottom:4 },
-  teamChip:{ backgroundColor:'#1a1a24', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:20, paddingHorizontal:14, paddingVertical:8 },
-  teamChipActive:{ backgroundColor:'rgba(0,229,160,0.12)', borderColor:'#00e5a0' },
+  teamChip:{ backgroundColor:'#0d2030', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:20, paddingHorizontal:14, paddingVertical:8 },
+  teamChipActive:{ backgroundColor:'rgba(33,165,106,0.12)', borderColor:'#21A56A' },
   teamChipDisabled:{ opacity:0.3 },
-  teamChipText:{ fontSize:13, fontWeight:'600', color:'#9090aa' },
-  teamChipTextActive:{ color:'#00e5a0' },
-  dateBtn:{ backgroundColor:'#1a1a24', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', borderRadius:12, padding:14, marginBottom:16 },
-  dateBtnText:{ fontSize:14, color:'#f0f0f8', fontWeight:'600' },
-  saveBtn:{ backgroundColor:'#00e5a0', borderRadius:14, padding:15, alignItems:'center', marginTop:8 },
+  teamChipText:{ fontSize:13, fontWeight:'600', color:'#7a9aaa' },
+  teamChipTextActive:{ color:'#21A56A' },
+  dateBtn:{ backgroundColor:'#0d2030', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', borderRadius:12, padding:14, marginBottom:16 },
+  dateBtnText:{ fontSize:14, color:'#eef4f8', fontWeight:'600' },
+  saveBtn:{ backgroundColor:'#21A56A', borderRadius:14, padding:15, alignItems:'center', marginTop:8 },
   saveBtnText:{ color:'#000', fontWeight:'800', fontSize:15 },
-  settleMatchName:{ fontSize:18, fontWeight:'800', color:'#f0f0f8', marginBottom:18 },
+  settleMatchName:{ fontSize:18, fontWeight:'800', color:'#eef4f8', marginBottom:18 },
   resultRow:{ gap:10, marginBottom:18 },
-  resultBtn:{ backgroundColor:'#1a1a24', borderWidth:1.5, borderColor:'rgba(255,255,255,0.08)', borderRadius:12, padding:14, alignItems:'center' },
-  resultBtnHome:{ borderColor:'#00e5a0', backgroundColor:'rgba(0,229,160,0.08)' },
-  resultBtnDraw:{ borderColor:'#ffc940', backgroundColor:'rgba(255,201,64,0.08)' },
-  resultBtnAway:{ borderColor:'#3d8bff', backgroundColor:'rgba(61,139,255,0.08)' },
-  resultBtnText:{ fontSize:14, fontWeight:'700', color:'#9090aa' },
+  resultBtn:{ backgroundColor:'#0d2030', borderWidth:1.5, borderColor:'rgba(255,255,255,0.08)', borderRadius:12, padding:14, alignItems:'center' },
+  resultBtnHome:{ borderColor:'#21A56A', backgroundColor:'rgba(33,165,106,0.08)' },
+  resultBtnDraw:{ borderColor:'#FFC845', backgroundColor:'rgba(255,200,69,0.08)' },
+  resultBtnAway:{ borderColor:'#47C4EE', backgroundColor:'rgba(71,196,238,0.08)' },
+  resultBtnText:{ fontSize:14, fontWeight:'700', color:'#7a9aaa' },
   scoreRow:{ flexDirection:'row', alignItems:'center', gap:14, marginBottom:18 },
-  scoreDash:{ fontSize:24, color:'#5a5a72', fontWeight:'800', marginTop:16 },
-  scoreInput:{ backgroundColor:'#1a1a24', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', borderRadius:12, padding:14, color:'#f0f0f8', fontSize:22, fontWeight:'800', textAlign:'center' },
-  textInput:{ backgroundColor:'#1a1a24', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:12, padding:14, color:'#f0f0f8', fontSize:14, marginBottom:14 },
+  scoreDash:{ fontSize:24, color:'#4a6878', fontWeight:'800', marginTop:16 },
+  scoreInput:{ backgroundColor:'#0d2030', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', borderRadius:12, padding:14, color:'#eef4f8', fontSize:22, fontWeight:'800', textAlign:'center' },
+  textInput:{ backgroundColor:'#0d2030', borderWidth:1, borderColor:'rgba(255,255,255,0.08)', borderRadius:12, padding:14, color:'#eef4f8', fontSize:14, marginBottom:14 },
 });

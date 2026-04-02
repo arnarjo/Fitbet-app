@@ -29,7 +29,7 @@ const FEATURE_MESSAGES: Record<string, { title: string; desc: string; emoji: str
 };
 
 const PREMIUM_FEATURES = [
-  { emoji: '🌍', title: 'Premier League & CL',    desc: 'Veðjaðu á leiki og tímabilsmarkaði í erlendum deildum' },
+  { emoji: '🌍', title: 'Premier League, CL & World Cup', desc: 'Veðjaðu á leiki í erlendum deildum og heimsmeistaramótinu' },
   { emoji: '🏅', title: 'Ótakmarkaðar deildir',  desc: 'Búðu til eins margar og þú vilt (ókeypis: 2)' },
   { emoji: '⚡', title: 'Strava tenging',          desc: 'Hlaup og hjólreiðar staðfest sjálfkrafa' },
   { emoji: '💪', title: 'Sérsniðnar áskoranir',   desc: 'Veldu hvaða æfingu sem er, hvaða magn' },
@@ -174,7 +174,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
                 <Text style={[s.comparisonFree, row.free === '✕' && { color: '#ff4a6e' }]}>
                   {row.free}
                 </Text>
-                <Text style={[s.comparisonPrem, { color: '#ffc940', fontWeight: '800' }]}>
+                <Text style={[s.comparisonPrem, { color: '#FFC845', fontWeight: '800' }]}>
                   {row.prem}
                 </Text>
               </View>
@@ -185,7 +185,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
           <View style={s.priceWrap}>
             <View style={s.priceRow}>
               {loading
-                ? <ActivityIndicator color="#ffc940" />
+                ? <ActivityIndicator color="#FFC845" />
                 : <>
                     <Text style={s.priceAmount}>{price}</Text>
                     <Text style={s.pricePeriod}> / mánuð</Text>
@@ -212,7 +212,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
           {/* Restore + legal */}
           <TouchableOpacity style={s.restoreBtn} onPress={handleRestore} disabled={restoring}>
             {restoring
-              ? <ActivityIndicator color="#9090aa" size="small" />
+              ? <ActivityIndicator color="#7a9aaa" size="small" />
               : <Text style={s.restoreBtnText}>Endurheimta fyrri kaup</Text>
             }
           </TouchableOpacity>
@@ -235,47 +235,47 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
 }
 
 const s = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#0a0a0f' },
+  container:   { flex: 1, backgroundColor: '#071D2A' },
   closeBtn:    {
     position: 'absolute', top: 52, right: 20, zIndex: 10,
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  closeBtnText: { color: '#9090aa', fontSize: 14, fontWeight: '700' },
+  closeBtnText: { color: '#7a9aaa', fontSize: 14, fontWeight: '700' },
   scroll:      { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
 
   // Hero
   hero:        { alignItems: 'center', paddingTop: 24, paddingBottom: 28 },
   crownWrap:   {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,201,64,0.12)',
-    borderWidth: 2, borderColor: 'rgba(255,201,64,0.3)',
+    backgroundColor: 'rgba(255,200,69,0.12)',
+    borderWidth: 2, borderColor: 'rgba(255,200,69,0.3)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   crown:       { fontSize: 36 },
-  heroTitle:   { fontSize: 28, fontWeight: '900', color: '#f0f0f8', marginBottom: 8 },
-  heroSub:     { fontSize: 14, color: '#9090aa', textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
+  heroTitle:   { fontSize: 28, fontWeight: '900', color: '#eef4f8', marginBottom: 8 },
+  heroSub:     { fontSize: 14, color: '#7a9aaa', textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
 
   // Feature highlight
   featureHighlight: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: 'rgba(255,201,64,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,201,64,0.2)',
+    backgroundColor: 'rgba(255,200,69,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,200,69,0.2)',
     borderRadius: 14, padding: 16, marginBottom: 20,
   },
   featureHighlightEmoji: { fontSize: 28 },
   featureHighlightText:  { flex: 1 },
-  featureHighlightTitle: { fontSize: 15, fontWeight: '800', color: '#f0f0f8' },
-  featureHighlightDesc:  { fontSize: 12, color: '#9090aa', marginTop: 2 },
+  featureHighlightTitle: { fontSize: 15, fontWeight: '800', color: '#eef4f8' },
+  featureHighlightDesc:  { fontSize: 12, color: '#7a9aaa', marginTop: 2 },
 
   // Features
   featuresLabel: {
-    fontSize: 10, fontWeight: '700', color: '#5a5a72',
+    fontSize: 10, fontWeight: '700', color: '#4a6878',
     letterSpacing: 1.5, marginBottom: 10,
   },
   featuresCard: {
-    backgroundColor: '#1a1a24', borderRadius: 16,
+    backgroundColor: '#0d2030', borderRadius: 16,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     overflow: 'hidden', marginBottom: 14,
   },
@@ -287,18 +287,18 @@ const s = StyleSheet.create({
   featureRowLast:  { borderBottomWidth: 0 },
   featureIconWrap: {
     width: 38, height: 38, borderRadius: 10,
-    backgroundColor: 'rgba(255,201,64,0.1)',
+    backgroundColor: 'rgba(255,200,69,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },
   featureIcon:  { fontSize: 18 },
   featureInfo:  { flex: 1 },
-  featureTitle: { fontSize: 14, fontWeight: '700', color: '#f0f0f8' },
-  featureDesc:  { fontSize: 11, color: '#5a5a72', marginTop: 2 },
-  featureCheck: { fontSize: 14, color: '#00e5a0', fontWeight: '800' },
+  featureTitle: { fontSize: 14, fontWeight: '700', color: '#eef4f8' },
+  featureDesc:  { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  featureCheck: { fontSize: 14, color: '#21A56A', fontWeight: '800' },
 
   // Comparison
   comparisonCard: {
-    backgroundColor: '#1a1a24', borderRadius: 14,
+    backgroundColor: '#0d2030', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     overflow: 'hidden', marginBottom: 20,
   },
@@ -307,20 +307,20 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  comparisonLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: '#9090aa' },
-  comparisonFree:  { width: 60, textAlign: 'center', fontSize: 13, color: '#5a5a72', fontWeight: '600' },
-  comparisonPrem:  { width: 70, textAlign: 'center', fontSize: 13, color: '#ffc940', fontWeight: '700' },
+  comparisonLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: '#7a9aaa' },
+  comparisonFree:  { width: 60, textAlign: 'center', fontSize: 13, color: '#4a6878', fontWeight: '600' },
+  comparisonPrem:  { width: 70, textAlign: 'center', fontSize: 13, color: '#FFC845', fontWeight: '700' },
 
   // Price
   priceWrap:   { alignItems: 'center', marginBottom: 16 },
   priceRow:    { flexDirection: 'row', alignItems: 'baseline' },
-  priceAmount: { fontSize: 40, fontWeight: '900', color: '#ffc940' },
-  pricePeriod: { fontSize: 16, color: '#9090aa', fontWeight: '600' },
-  priceSub:    { fontSize: 12, color: '#5a5a72', marginTop: 4 },
+  priceAmount: { fontSize: 40, fontWeight: '900', color: '#FFC845' },
+  pricePeriod: { fontSize: 16, color: '#7a9aaa', fontWeight: '600' },
+  priceSub:    { fontSize: 12, color: '#4a6878', marginTop: 4 },
 
   // Purchase button
   purchaseBtn: {
-    backgroundColor: '#ffc940', borderRadius: 16,
+    backgroundColor: '#FFC845', borderRadius: 16,
     paddingVertical: 16, alignItems: 'center', marginBottom: 12,
   },
   purchaseBtnDisabled: { opacity: 0.6 },
@@ -328,9 +328,9 @@ const s = StyleSheet.create({
 
   // Restore
   restoreBtn:     { alignItems: 'center', paddingVertical: 10, marginBottom: 16 },
-  restoreBtnText: { fontSize: 13, color: '#5a5a72', fontWeight: '600' },
+  restoreBtnText: { fontSize: 13, color: '#4a6878', fontWeight: '600' },
 
   // Legal
-  legal:     { fontSize: 11, color: '#3a3a52', textAlign: 'center', lineHeight: 17 },
-  legalLink: { color: '#5a5a72', textDecorationLine: 'underline' },
+  legal:     { fontSize: 11, color: '#2a4050', textAlign: 'center', lineHeight: 17 },
+  legalLink: { color: '#4a6878', textDecorationLine: 'underline' },
 });

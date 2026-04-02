@@ -38,12 +38,13 @@ type Props = {
 };
 
 const STEPS: Step[] = ['prediction', 'opponent', 'challenge', 'confirm'];
-const STEP_LABELS = ['Spá', 'Andstæðingur', 'Áskorun', 'Staðfesta'];
+const STEP_LABELS = ['Spá', 'Vinur', 'Æfing', 'Staðfesta'];
 
 const LEAGUE_COLORS: Record<string, string> = {
-  'Premier League': '#00e5a0',
-  'UEFA Champions League': '#3d8bff',
-  'Besta deild karla': '#ffc940',
+  'Premier League': '#21A56A',
+  'UEFA Champions League': '#47C4EE',
+  'FIFA World Cup': '#FFC845',
+  'Besta deild karla': '#FFC845',
   'Lengjudeild karla': '#ff9f40',
 };
 
@@ -68,7 +69,7 @@ export default function BetModal({
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
 
-  const accentColor = match ? (LEAGUE_COLORS[match.league_name] ?? '#00e5a0') : '#00e5a0';
+  const accentColor = match ? (LEAGUE_COLORS[match.league_name] ?? '#21A56A') : '#21A56A';
 
   useEffect(() => {
     if (visible) {
@@ -186,28 +187,36 @@ export default function BetModal({
   async function handleSubmit() {
     if (!match || !opponent || !prediction || !exercise || !amount) return;
 
-    setSubmitting(true);
     const selectedExercise = EXERCISE_OPTIONS[exercise];
+    if (!selectedExercise) {
+      Alert.alert('Villa', 'Ógild æfing valin. Reyndu aftur.');
+      return;
+    }
 
-    const { error } = await onSubmit(
-      match.id,
-      opponent.id,
-      prediction,
-      exercise,
-      amount,
-      selectedExercise.unit,
-    );
+    setSubmitting(true);
+    try {
+      const { error } = await onSubmit(
+        match.id,
+        opponent.id,
+        prediction,
+        exercise,
+        amount,
+        selectedExercise.unit,
+      );
 
-    setSubmitting(false);
-
-    if (error) {
-      Alert.alert('Villa', 'Ekki tókst að senda veðmál. Reyndu aftur.');
-    } else {
-      onClose();
-      setPrediction(null);
-      setOpponent(null);
-      setExercise(null);
-      setAmount(null);
+      if (error) {
+        Alert.alert('Villa', 'Ekki tókst að senda veðmál. Reyndu aftur.');
+      } else {
+        onClose();
+        setPrediction(null);
+        setOpponent(null);
+        setExercise(null);
+        setAmount(null);
+      }
+    } catch {
+      Alert.alert('Villa', 'Óvænt villa kom upp. Reyndu aftur.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -309,7 +318,7 @@ export default function BetModal({
               <View style={s.matchPreview}>
                 <View style={s.previewTeam}>
                   <Text style={s.previewName}>{match.home_team?.name}</Text>
-                  <Text style={s.previewSub}>Heimalið</Text>
+                  <Text style={s.previewSub}>Heima</Text>
                 </View>
                 <View style={s.previewMiddle}>
                   <Text style={s.previewVs}>VS</Text>
@@ -317,7 +326,7 @@ export default function BetModal({
                 </View>
                 <View style={[s.previewTeam, { alignItems: 'flex-end' }]}>
                   <Text style={s.previewName}>{match.away_team?.name}</Text>
-                  <Text style={s.previewSub}>Útlið</Text>
+                  <Text style={s.previewSub}>Úti</Text>
                 </View>
               </View>
 
@@ -330,13 +339,6 @@ export default function BetModal({
                       : pred === 'away'
                       ? match.away_team?.name ?? 'Útlið'
                       : 'Jafntefli';
-
-                  const sub =
-                    pred === 'home'
-                      ? 'Heimalið vinnur'
-                      : pred === 'away'
-                      ? 'Útlið vinnur'
-                      : 'Engin vinnur';
 
                   return (
                     <TouchableOpacity
@@ -354,7 +356,6 @@ export default function BetModal({
                       <Text style={[s.predLabel, isSel && { color: accentColor }]}>
                         {label}
                       </Text>
-                      <Text style={s.predSub}>{sub}</Text>
                       {isSel && (
                         <View
                           style={[s.predCheck, { backgroundColor: accentColor }]}
@@ -371,8 +372,8 @@ export default function BetModal({
 
           {step === 'opponent' && (
             <View>
-              <Text style={s.stepTitle}>Veldu andstæðing</Text>
-              <Text style={s.stepSub}>Veldu notanda til að skora á</Text>
+              <Text style={s.stepTitle}>Veldu vin</Text>
+              <Text style={s.stepSub}>Veldu við hvern þú vilt veðja</Text>
 
               {loadingFriends ? (
                 <ActivityIndicator color={accentColor} style={{ marginTop: 40 }} />
@@ -427,12 +428,10 @@ export default function BetModal({
 
           {step === 'challenge' && (
             <View>
-              <Text style={s.stepTitle}>Velja áskorun</Text>
-              <Text style={s.stepSub}>
-                Sá sem tapar þarf að klára þessa áskorun
-              </Text>
+              <Text style={s.stepTitle}>Veldu æfingu</Text>
+              <Text style={s.stepSub}>Sá sem tapar þarf að klára þessa æfingu</Text>
 
-              <Text style={s.sectionLabel}>ÆFING</Text>
+              <Text style={s.sectionLabel}>TEGUND ÆFINGAR</Text>
               <View style={s.exerciseGrid}>
                 {(Object.entries(EXERCISE_OPTIONS) as [
                   Exercise,
@@ -505,8 +504,8 @@ export default function BetModal({
 
           {step === 'confirm' && prediction && opponent && exercise && amount && (
             <View>
-              <Text style={s.stepTitle}>Staðfesta veðmál</Text>
-              <Text style={s.stepSub}>Athugaðu allt vel áður en þú sendir</Text>
+              <Text style={s.stepTitle}>Staðfesta</Text>
+              <Text style={s.stepSub}>Athugaðu vel áður en þú sendir</Text>
 
               <View style={s.confirmCard}>
                 <View style={s.confirmRow}>
@@ -538,7 +537,7 @@ export default function BetModal({
                 <View style={s.confirmDivider} />
 
                 <View style={s.confirmRow}>
-                  <Text style={s.confirmKey}>💪 Áskorun</Text>
+                  <Text style={s.confirmKey}>💪 Æfing ef tap</Text>
                   <Text style={[s.confirmVal, { color: '#ff4a6e' }]}>
                     {amount} {EXERCISE_OPTIONS[exercise].unit}{' '}
                     {EXERCISE_OPTIONS[exercise].label}
@@ -636,7 +635,7 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     height: SHEET_H,
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     borderTopWidth: 1,
@@ -668,9 +667,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backText: { color: '#f0f0f8', fontSize: 16, fontWeight: '700' },
+  backText: { color: '#eef4f8', fontSize: 16, fontWeight: '700' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerMatch: { fontSize: 15, fontWeight: '800', color: '#f0f0f8' },
+  headerMatch: { fontSize: 15, fontWeight: '800', color: '#eef4f8' },
   headerLeague: { fontSize: 11, fontWeight: '600', marginTop: 1 },
   progressBar: {
     height: 2,
@@ -702,16 +701,16 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   stepDotActive: { transform: [{ scale: 1.1 }] },
-  stepNum: { fontSize: 11, fontWeight: '800', color: '#5a5a72' },
+  stepNum: { fontSize: 11, fontWeight: '800', color: '#4a6878' },
   stepCheck: { fontSize: 11, fontWeight: '800', color: '#000' },
-  stepLabel: { fontSize: 10, color: '#5a5a72', fontWeight: '600' },
+  stepLabel: { fontSize: 10, color: '#4a6878', fontWeight: '600' },
   body: { flex: 1, paddingHorizontal: 20 },
-  stepTitle: { fontSize: 22, fontWeight: '800', color: '#f0f0f8', marginBottom: 4 },
-  stepSub: { fontSize: 13, color: '#9090aa', marginBottom: 20, lineHeight: 18 },
+  stepTitle: { fontSize: 22, fontWeight: '800', color: '#eef4f8', marginBottom: 4 },
+  stepSub: { fontSize: 13, color: '#7a9aaa', marginBottom: 20, lineHeight: 18 },
 
   matchPreview: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderRadius: 14,
     padding: 14,
     marginBottom: 20,
@@ -719,23 +718,23 @@ const s = StyleSheet.create({
     gap: 8,
   },
   previewTeam: { flex: 1 },
-  previewName: { fontSize: 14, fontWeight: '800', color: '#f0f0f8', lineHeight: 18 },
-  previewSub: { fontSize: 10, color: '#5a5a72', marginTop: 2 },
+  previewName: { fontSize: 14, fontWeight: '800', color: '#eef4f8', lineHeight: 18 },
+  previewSub: { fontSize: 10, color: '#4a6878', marginTop: 2 },
   previewMiddle: { alignItems: 'center', width: 60 },
-  previewVs: { fontSize: 10, fontWeight: '800', color: '#5a5a72' },
-  previewTime: { fontSize: 10, color: '#3a3a52', marginTop: 2, textAlign: 'center' },
+  previewVs: { fontSize: 10, fontWeight: '800', color: '#4a6878' },
+  previewTime: { fontSize: 10, color: '#2a4050', marginTop: 2, textAlign: 'center' },
 
   predGrid: { gap: 10 },
   predCard: {
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     padding: 16,
     position: 'relative',
   },
-  predLabel: { fontSize: 16, fontWeight: '800', color: '#f0f0f8', marginBottom: 3 },
-  predSub: { fontSize: 12, color: '#5a5a72' },
+  predLabel: { fontSize: 16, fontWeight: '800', color: '#eef4f8', marginBottom: 3 },
+  predSub: { fontSize: 12, color: '#4a6878' },
   predCheck: {
     position: 'absolute',
     top: 14,
@@ -752,7 +751,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.07)',
     borderRadius: 14,
@@ -768,8 +767,8 @@ const s = StyleSheet.create({
   },
   friendInitials: { fontSize: 15, fontWeight: '800' },
   friendInfo: { flex: 1 },
-  friendName: { fontSize: 15, fontWeight: '700', color: '#f0f0f8' },
-  friendHandle: { fontSize: 12, color: '#5a5a72', marginTop: 2 },
+  friendName: { fontSize: 15, fontWeight: '700', color: '#eef4f8' },
+  friendHandle: { fontSize: 12, color: '#4a6878', marginTop: 2 },
   selectedBadge: {
     width: 24,
     height: 24,
@@ -781,13 +780,13 @@ const s = StyleSheet.create({
 
   emptyState: { alignItems: 'center', paddingVertical: 48 },
   emptyIcon: { fontSize: 44, marginBottom: 14 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#f0f0f8', marginBottom: 6 },
-  emptySub: { fontSize: 14, color: '#5a5a72', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#eef4f8', marginBottom: 6 },
+  emptySub: { fontSize: 14, color: '#4a6878', textAlign: 'center', lineHeight: 20 },
 
   sectionLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#5a5a72',
+    color: '#4a6878',
     letterSpacing: 1.5,
     marginBottom: 10,
   },
@@ -798,7 +797,7 @@ const s = StyleSheet.create({
   },
   exCard: {
     width: '30.5%',
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
@@ -810,25 +809,25 @@ const s = StyleSheet.create({
   exLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9090aa',
+    color: '#7a9aaa',
     textAlign: 'center',
   },
 
   amountRow: { flexDirection: 'row', gap: 10 },
   amountBtn: {
     flex: 1,
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
   },
-  amountNum: { fontSize: 22, fontWeight: '900', color: '#f0f0f8' },
-  amountUnit: { fontSize: 11, color: '#5a5a72', fontWeight: '600', marginTop: 2 },
+  amountNum: { fontSize: 22, fontWeight: '900', color: '#eef4f8' },
+  amountUnit: { fontSize: 11, color: '#4a6878', fontWeight: '600', marginTop: 2 },
 
   confirmCard: {
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
@@ -841,11 +840,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
-  confirmKey: { fontSize: 13, color: '#9090aa' },
+  confirmKey: { fontSize: 13, color: '#7a9aaa' },
   confirmVal: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#f0f0f8',
+    color: '#eef4f8',
     maxWidth: '55%',
     textAlign: 'right',
   },
@@ -866,7 +865,7 @@ const s = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 36,
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },

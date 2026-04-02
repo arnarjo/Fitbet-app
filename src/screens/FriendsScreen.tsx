@@ -20,7 +20,7 @@ interface FriendEntry {
   losses?: number;
 }
 
-const AVATAR_COLORS = ['#00e5a0','#3d8bff','#ff4a6e','#ffc940','#a855f7','#ff9f40'];
+const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
@@ -30,7 +30,7 @@ function avatarColor(id: string) {
   return AVATAR_COLORS[idx % AVATAR_COLORS.length];
 }
 
-export default function FriendsScreen() {
+export default function FriendsScreen({ navigation }: { navigation: any }) {
   const { profile } = useAuth();
   const userId = profile?.id ?? '';
 
@@ -199,6 +199,9 @@ export default function FriendsScreen() {
 
       {/* Header */}
       <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Text style={s.backText}>←</Text>
+        </TouchableOpacity>
         <Text style={s.headerTitle}>Vinir</Text>
         {requests.length > 0 && (
           <View style={s.requestsBadge}>
@@ -213,7 +216,7 @@ export default function FriendsScreen() {
         <TextInput
           style={s.searchInput}
           placeholder="Leita að notendum..."
-          placeholderTextColor="#3a3a52"
+          placeholderTextColor="#2a4050"
           value={search}
           onChangeText={setSearch}
           autoCorrect={false}
@@ -229,7 +232,7 @@ export default function FriendsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#21A56A" />}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Search results ── */}
@@ -237,7 +240,7 @@ export default function FriendsScreen() {
           <View style={s.section}>
             <Text style={s.sectionLabel}>LEITARNIÐURSTÖÐUR</Text>
             {searching ? (
-              <ActivityIndicator color="#00e5a0" style={{ marginTop: 16 }} />
+              <ActivityIndicator color="#21A56A" style={{ marginTop: 16 }} />
             ) : searchResults.length === 0 ? (
               <Text style={s.emptyText}>Enginn notandi fannst fyrir „{search}"</Text>
             ) : (
@@ -334,7 +337,7 @@ export default function FriendsScreen() {
         <View style={s.section}>
           <Text style={s.sectionLabel}>VINIR ({friends.filter(f => f.status === 'friends').length})</Text>
           {loading ? (
-            <ActivityIndicator color="#00e5a0" style={{ marginTop: 20 }} />
+            <ActivityIndicator color="#21A56A" style={{ marginTop: 20 }} />
           ) : friends.filter(f => f.status === 'friends').length === 0 &&
               friends.filter(f => f.status === 'pending_sent').length === 0 ? (
             <View style={s.emptyState}>
@@ -403,12 +406,14 @@ export default function FriendsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 20, paddingTop: 4, paddingBottom: 14,
+    paddingHorizontal: 14, paddingTop: 4, paddingBottom: 14,
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#f0f0f8' },
+  backBtn: { padding: 6 },
+  backText: { fontSize: 22, color: '#4a6878', fontWeight: '600' },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#eef4f8', flex: 1 },
   requestsBadge: {
     backgroundColor: '#ff4a6e', width: 22, height: 22,
     borderRadius: 11, alignItems: 'center', justifyContent: 'center',
@@ -417,23 +422,23 @@ const s = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: 16, marginBottom: 16,
-    backgroundColor: '#1a1a24', borderRadius: 12,
+    backgroundColor: '#0d2030', borderRadius: 12,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 14, paddingVertical: 11,
   },
   searchIcon: { fontSize: 16 },
   searchInput: {
-    flex: 1, color: '#f0f0f8', fontSize: 14, fontFamily: 'DM Sans',
+    flex: 1, color: '#eef4f8', fontSize: 14, fontFamily: 'DM Sans',
   },
-  searchClear: { fontSize: 14, color: '#5a5a72', padding: 2 },
+  searchClear: { fontSize: 14, color: '#4a6878', padding: 2 },
   scroll: { paddingHorizontal: 16 },
   section: { marginBottom: 20 },
   sectionLabel: {
-    fontSize: 10, fontWeight: '700', color: '#5a5a72',
+    fontSize: 10, fontWeight: '700', color: '#4a6878',
     letterSpacing: 1.5, marginBottom: 10,
   },
   listCard: {
-    backgroundColor: '#1a1a24', borderRadius: 16,
+    backgroundColor: '#0d2030', borderRadius: 16,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
   },
   row: {
@@ -447,24 +452,24 @@ const s = StyleSheet.create({
   },
   avatarText: { fontSize: 13, fontWeight: '800' },
   rowInfo: { flex: 1 },
-  rowName: { fontSize: 14, fontWeight: '700', color: '#f0f0f8' },
-  rowHandle: { fontSize: 11, color: '#5a5a72', marginTop: 2 },
+  rowName: { fontSize: 14, fontWeight: '700', color: '#eef4f8' },
+  rowHandle: { fontSize: 11, color: '#4a6878', marginTop: 2 },
   addBtn: {
-    backgroundColor: '#00e5a0', paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: '#21A56A', paddingHorizontal: 12, paddingVertical: 7,
     borderRadius: 20, minWidth: 80, alignItems: 'center',
   },
   addBtnText: { fontSize: 12, fontWeight: '800', color: '#000' },
   friendsBadge: {
-    backgroundColor: 'rgba(0,229,160,0.1)',
-    borderWidth: 1, borderColor: 'rgba(0,229,160,0.25)',
+    backgroundColor: 'rgba(33,165,106,0.1)',
+    borderWidth: 1, borderColor: 'rgba(33,165,106,0.25)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  friendsBadgeText: { fontSize: 11, fontWeight: '700', color: '#00e5a0' },
+  friendsBadgeText: { fontSize: 11, fontWeight: '700', color: '#21A56A' },
   pendingBadge: {
-    backgroundColor: 'rgba(255,201,64,0.1)',
+    backgroundColor: 'rgba(255,200,69,0.1)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: '#ffc940' },
+  pendingBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFC845' },
   requestActions: { flexDirection: 'row', gap: 8 },
   declineBtn: {
     width: 34, height: 34, borderRadius: 17,
@@ -474,7 +479,7 @@ const s = StyleSheet.create({
   },
   declineBtnText: { fontSize: 13, color: '#ff4a6e', fontWeight: '700' },
   acceptBtn: {
-    backgroundColor: '#00e5a0', paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: '#21A56A', paddingHorizontal: 12, paddingVertical: 7,
     borderRadius: 20, minWidth: 90, alignItems: 'center',
   },
   acceptBtnText: { fontSize: 12, fontWeight: '800', color: '#000' },
@@ -483,10 +488,10 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center', justifyContent: 'center',
   },
-  removeBtnText: { fontSize: 16, color: '#5a5a72', fontWeight: '700' },
+  removeBtnText: { fontSize: 16, color: '#4a6878', fontWeight: '700' },
   emptyState: { alignItems: 'center', paddingVertical: 40, gap: 8 },
   emptyIcon: { fontSize: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#f0f0f8' },
-  emptySub: { fontSize: 13, color: '#5a5a72', textAlign: 'center', paddingHorizontal: 20 },
-  emptyText: { fontSize: 13, color: '#5a5a72', textAlign: 'center', paddingVertical: 16 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#eef4f8' },
+  emptySub: { fontSize: 13, color: '#4a6878', textAlign: 'center', paddingHorizontal: 20 },
+  emptyText: { fontSize: 13, color: '#4a6878', textAlign: 'center', paddingVertical: 16 },
 });

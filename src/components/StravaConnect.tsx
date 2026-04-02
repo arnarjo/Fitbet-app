@@ -69,7 +69,7 @@ export default function StravaConnect({ onConnected }: Props) {
             <Text style={s.syncLabel}>Síðustu 7 dagar ({activities.length} æfingar)</Text>
             <TouchableOpacity onPress={syncActivities} disabled={syncing}>
               {syncing
-                ? <ActivityIndicator color="#00e5a0" size="small" />
+                ? <ActivityIndicator color="#21A56A" size="small" />
                 : <Text style={s.syncBtn}>↻ Uppfæra</Text>
               }
             </TouchableOpacity>
@@ -133,7 +133,7 @@ export default function StravaConnect({ onConnected }: Props) {
 
 const s = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
@@ -151,10 +151,10 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   stravaLogoText: { fontSize: 20, fontWeight: '900', color: '#fff' },
-  title: { fontSize: 15, fontWeight: '800', color: '#f0f0f8' },
-  sub: { fontSize: 11, color: '#9090aa', marginTop: 2, maxWidth: 180 },
+  title: { fontSize: 15, fontWeight: '800', color: '#eef4f8' },
+  sub: { fontSize: 11, color: '#7a9aaa', marginTop: 2, maxWidth: 180 },
   connectBtn: {
-    backgroundColor: '#00e5a0', paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: '#21A56A', paddingHorizontal: 16, paddingVertical: 8,
     borderRadius: 20, minWidth: 70, alignItems: 'center',
   },
   connectBtnDisabled: { opacity: 0.6 },
@@ -164,14 +164,14 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
   },
-  disconnectText: { fontSize: 12, fontWeight: '700', color: '#9090aa' },
+  disconnectText: { fontSize: 12, fontWeight: '700', color: '#7a9aaa' },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)' },
   syncRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
   },
-  syncLabel: { fontSize: 11, color: '#5a5a72', fontWeight: '600' },
-  syncBtn: { fontSize: 12, color: '#00e5a0', fontWeight: '700' },
+  syncLabel: { fontSize: 11, color: '#4a6878', fontWeight: '600' },
+  syncBtn: { fontSize: 12, color: '#21A56A', fontWeight: '700' },
   activityRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 16, paddingVertical: 10,
@@ -179,24 +179,24 @@ const s = StyleSheet.create({
   },
   activityIcon: { fontSize: 18, width: 24, textAlign: 'center' },
   activityInfo: { flex: 1 },
-  activityName: { fontSize: 13, fontWeight: '700', color: '#f0f0f8' },
-  activityMeta: { fontSize: 11, color: '#5a5a72', marginTop: 2 },
-  activityDate: { fontSize: 11, color: '#3a3a52' },
+  activityName: { fontSize: 13, fontWeight: '700', color: '#eef4f8' },
+  activityMeta: { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  activityDate: { fontSize: 11, color: '#2a4050' },
   noActivities: { padding: 16, alignItems: 'center' },
-  noActivitiesText: { fontSize: 13, color: '#5a5a72' },
+  noActivitiesText: { fontSize: 13, color: '#4a6878' },
   infoBox: {
     margin: 12, padding: 12,
-    backgroundColor: 'rgba(0,229,160,0.07)',
+    backgroundColor: 'rgba(33,165,106,0.07)',
     borderRadius: 10,
-    borderWidth: 1, borderColor: 'rgba(0,229,160,0.15)',
+    borderWidth: 1, borderColor: 'rgba(33,165,106,0.15)',
   },
-  infoText: { fontSize: 12, color: '#9090aa', lineHeight: 18 },
+  infoText: { fontSize: 12, color: '#7a9aaa', lineHeight: 18 },
   benefitsList: { padding: 14, gap: 0 },
   benefit: {
     paddingVertical: 7,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
-  benefitText: { fontSize: 13, color: '#9090aa' },
+  benefitText: { fontSize: 13, color: '#7a9aaa' },
 });
 
 

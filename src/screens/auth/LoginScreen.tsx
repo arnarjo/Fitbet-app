@@ -45,7 +45,7 @@ export default function LoginScreen({ navigation }: Props) {
   function validate(): boolean {
     const newErrors: typeof errors = {};
     if (!email.trim()) newErrors.email = 'Netfang vantar';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Netfang er ekki gilt';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) newErrors.email = 'Netfang er ekki gilt';
     if (!password) newErrors.password = 'Lykilorð vantar';
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) { shake(); return false; }
@@ -62,7 +62,7 @@ export default function LoginScreen({ navigation }: Props) {
       if (error.message.includes('Invalid login')) {
         setErrors({ email: 'Rangt netfang eða lykilorð' });
       } else {
-        Alert.alert('Villa', error.message);
+        setErrors({ email: 'Rangt netfang eða lykilorð' });
       }
     }
     // Navigation handled automatically by RootNavigator session listener
@@ -70,7 +70,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" />
+      <StatusBar barStyle="light-content" backgroundColor="#071D2A" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -103,7 +103,7 @@ export default function LoginScreen({ navigation }: Props) {
               <TextInput
                 style={[s.input, errors.email ? s.inputError : null]}
                 placeholder="þú@dæmi.is"
-                placeholderTextColor="#3a3a52"
+                placeholderTextColor="#2a4050"
                 value={email}
                 onChangeText={(t) => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
                 keyboardType="email-address"
@@ -122,7 +122,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <TextInput
                   style={[s.input, s.passwordInput, errors.password ? s.inputError : null]}
                   placeholder="••••••••"
-                  placeholderTextColor="#3a3a52"
+                  placeholderTextColor="#2a4050"
                   value={password}
                   onChangeText={(t) => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
                   secureTextEntry={!showPassword}
@@ -190,23 +190,23 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
 
   backBtn: { paddingTop: 8, paddingBottom: 16, alignSelf: 'flex-start' },
-  backText: { color: '#5a5a72', fontSize: 14, fontWeight: '600' },
+  backText: { color: '#4a6878', fontSize: 14, fontWeight: '600' },
 
   logoArea: { alignItems: 'center', marginBottom: 32, marginTop: 8 },
   logo: {
     fontSize: 44,
     fontWeight: '900',
-    color: '#00e5a0',
+    color: '#21A56A',
     letterSpacing: 6,
   },
   logoUnderline: {
     width: 40,
     height: 3,
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     borderRadius: 2,
     marginTop: 6,
   },
@@ -214,13 +214,13 @@ const s = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#f0f0f8',
+    color: '#eef4f8',
     marginBottom: 6,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 15,
-    color: '#5a5a72',
+    color: '#4a6878',
     marginBottom: 28,
   },
 
@@ -228,18 +228,18 @@ const s = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#5a5a72',
+    color: '#4a6878',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: '#f0f0f8',
+    color: '#eef4f8',
     fontSize: 15,
     flex: 1,
   },
@@ -256,7 +256,7 @@ const s = StyleSheet.create({
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 0 },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   eyeBtn: {
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderWidth: 1,
     borderLeftWidth: 0,
     borderColor: 'rgba(255,255,255,0.08)',
@@ -270,10 +270,10 @@ const s = StyleSheet.create({
   eyeIcon: { fontSize: 16 },
 
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
-  forgotText: { color: '#00e5a0', fontSize: 13, fontWeight: '600' },
+  forgotText: { color: '#21A56A', fontSize: 13, fontWeight: '600' },
 
   loginBtn: {
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -288,7 +288,7 @@ const s = StyleSheet.create({
     marginVertical: 24,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
-  dividerText: { color: '#3a3a52', fontSize: 13 },
+  dividerText: { color: '#2a4050', fontSize: 13 },
 
   signupBtn: {
     borderWidth: 1,
@@ -298,13 +298,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  signupBtnText: { color: '#f0f0f8', fontSize: 15, fontWeight: '700' },
+  signupBtnText: { color: '#eef4f8', fontSize: 15, fontWeight: '700' },
 
   termsText: {
     fontSize: 12,
-    color: '#3a3a52',
+    color: '#2a4050',
     textAlign: 'center',
     lineHeight: 18,
   },
-  termsLink: { color: '#5a5a72', textDecorationLine: 'underline' },
+  termsLink: { color: '#4a6878', textDecorationLine: 'underline' },
 });

@@ -30,7 +30,7 @@ export function useBets(userId: string) {
   }, [userId]);
 
   async function fetchBets() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bets')
       .select(`
         *,
@@ -41,7 +41,7 @@ export function useBets(userId: string) {
       .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
-    setBets((data as Bet[]) ?? []);
+    if (!error) setBets((data as Bet[]) ?? []);
     setLoading(false);
   }
 

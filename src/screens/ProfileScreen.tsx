@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useStrava } from '../hooks/useStrava';
 import type { Achievement } from '../types/database';
 
 type AchievementDef = {
@@ -35,8 +36,8 @@ function getInitials(name: string) {
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
   const navigation = useNavigation<any>();
+  const { connected: stravaConnected, connecting: stravaConnecting, connect: stravaConnect, disconnect: stravaDisconnect } = useStrava();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [stravaConnected, setStravaConnected] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [recentBets, setRecentBets] = useState<any[]>([]);
 
@@ -44,7 +45,6 @@ export default function ProfileScreen() {
     if (!profile?.id) return;
     fetchAchievements();
     fetchRecentBets();
-    setStravaConnected(profile.strava_connected ?? false);
   }, [profile?.id]);
 
   async function fetchAchievements() {
@@ -82,7 +82,11 @@ export default function ProfileScreen() {
         {
           text: 'Eyða', style: 'destructive',
           onPress: async () => {
-            await supabase.from('profiles').delete().eq('id', profile!.id);
+            const { error } = await supabase.rpc('delete_user');
+            if (error) {
+              Alert.alert('Villa', 'Ekki tókst að eyða reikningi. Hafðu samband við support@fitbet.is');
+              return;
+            }
             await supabase.auth.signOut();
           },
         },
@@ -92,23 +96,9 @@ export default function ProfileScreen() {
 
   async function handleStravaToggle() {
     if (stravaConnected) {
-      Alert.alert('Aftengja Strava', 'Viltu aftengja Strava reikninginn?', [
-        { text: 'Hætta við', style: 'cancel' },
-        {
-          text: 'Aftengja', onPress: async () => {
-            await supabase.from('profiles').update({
-              strava_connected: false, strava_access_token: null,
-            }).eq('id', profile!.id);
-            setStravaConnected(false);
-          },
-        },
-      ]);
+      stravaDisconnect();
     } else {
-      // Open Strava OAuth — in production use expo-web-browser + deep link
-      Alert.alert('Tengja Strava', 'Opnar Strava til að heimila aðgang...', [
-        { text: 'Hætta við', style: 'cancel' },
-        { text: 'Halda áfram', onPress: () => Linking.openURL('https://www.strava.com/oauth/authorize') },
-      ]);
+      await stravaConnect();
     }
   }
 
@@ -145,7 +135,7 @@ export default function ProfileScreen() {
         {/* ── Stats grid ── */}
         <View style={s.statsGrid}>
           <View style={[s.statBox, s.statBoxAccent]}>
-            <Text style={[s.statNum, { color: '#00e5a0' }]}>{points}</Text>
+            <Text style={[s.statNum, { color: '#21A56A' }]}>{points}</Text>
             <Text style={s.statLbl}>Stig</Text>
           </View>
           <View style={s.statBox}>
@@ -173,7 +163,7 @@ export default function ProfileScreen() {
             <View style={[s.winRateLoss, { flex: losses || 0 }]} />
           </View>
           <View style={s.winRateRow}>
-            <Text style={[s.winRateNum, { color: '#00e5a0' }]}>{wins}</Text>
+            <Text style={[s.winRateNum, { color: '#21A56A' }]}>{wins}</Text>
             <Text style={[s.winRateNum, { color: '#ff4a6e' }]}>{losses}</Text>
           </View>
         </View>
@@ -220,11 +210,11 @@ export default function ProfileScreen() {
                 const won = bet.winner_id === profile?.id;
                 return (
                   <View key={bet.id} style={s.recentRow}>
-                    <View style={[s.recentDot, { backgroundColor: won ? '#00e5a0' : '#ff4a6e' }]} />
+                    <View style={[s.recentDot, { backgroundColor: won ? '#21A56A' : '#ff4a6e' }]} />
                     <Text style={s.recentMatch} numberOfLines={1}>
                       {bet.match?.home_team?.short_name} vs {bet.match?.away_team?.short_name}
                     </Text>
-                    <Text style={[s.recentResult, { color: won ? '#00e5a0' : '#ff4a6e' }]}>
+                    <Text style={[s.recentResult, { color: won ? '#21A56A' : '#ff4a6e' }]}>
                       {won ? '+3 stig' : '0 stig'}
                     </Text>
                   </View>
@@ -233,6 +223,22 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
+
+        {/* ── Friends ── */}
+        <View style={[s.section, { marginTop: -8 }]}>
+          <TouchableOpacity
+            style={s.friendsBtn}
+            onPress={() => navigation.navigate('Friends')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.friendsBtnIcon}>👥</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.friendsBtnText}>Vinir</Text>
+              <Text style={s.friendsBtnSub}>Skoða og bæta við vinum</Text>
+            </View>
+            <Text style={s.friendsBtnArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* ── Settings ── */}
         <View style={s.section}>
@@ -251,8 +257,9 @@ export default function ProfileScreen() {
               <Switch
                 value={stravaConnected}
                 onValueChange={handleStravaToggle}
-                trackColor={{ false: '#22222f', true: 'rgba(0,229,160,0.3)' }}
-                thumbColor={stravaConnected ? '#00e5a0' : '#5a5a72'}
+                disabled={stravaConnecting}
+                trackColor={{ false: '#0d2030', true: 'rgba(33,165,106,0.3)' }}
+                thumbColor={stravaConnected ? '#21A56A' : '#4a6878'}
               />
             </View>
 
@@ -269,8 +276,8 @@ export default function ProfileScreen() {
               <Switch
                 value={notifEnabled}
                 onValueChange={setNotifEnabled}
-                trackColor={{ false: '#22222f', true: 'rgba(0,229,160,0.3)' }}
-                thumbColor={notifEnabled ? '#00e5a0' : '#5a5a72'}
+                trackColor={{ false: '#0d2030', true: 'rgba(33,165,106,0.3)' }}
+                thumbColor={notifEnabled ? '#21A56A' : '#4a6878'}
               />
             </View>
 
@@ -315,19 +322,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── Friends ── */}
-        <View style={s.section}>
-          <TouchableOpacity
-            style={s.friendsBtn}
-            onPress={() => navigation.navigate('Friends')}
-            activeOpacity={0.85}
-          >
-            <Text style={s.adminBtnIcon}>👥</Text>
-            <Text style={s.friendsBtnText}>Vinir</Text>
-            <Text style={s.settingArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* ── Admin ── */}
         {profile?.is_admin && (
           <View style={s.section}>
@@ -361,74 +355,74 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   scroll: { paddingBottom: 24 },
   profileHeader: {
     alignItems: 'center', paddingTop: 16, paddingBottom: 20,
-    backgroundColor: 'rgba(0,229,160,0.04)',
+    backgroundColor: 'rgba(33,165,106,0.04)',
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
     marginBottom: 16,
   },
   avatarWrap: { position: 'relative', marginBottom: 12 },
   avatar: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(0,229,160,0.15)',
-    borderWidth: 3, borderColor: 'rgba(0,229,160,0.3)',
+    backgroundColor: 'rgba(33,165,106,0.15)',
+    borderWidth: 3, borderColor: 'rgba(33,165,106,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 28, fontWeight: '800', color: '#00e5a0' },
+  avatarText: { fontSize: 28, fontWeight: '800', color: '#21A56A' },
   stravaIndicator: {
     position: 'absolute', bottom: 0, right: 0,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#0a0a0f',
+    borderWidth: 2, borderColor: '#071D2A',
   },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#f0f0f8', marginBottom: 4 },
-  profileHandle: { fontSize: 13, color: '#9090aa', marginBottom: 2 },
-  profileCity: { fontSize: 12, color: '#5a5a72' },
+  profileName: { fontSize: 22, fontWeight: '800', color: '#eef4f8', marginBottom: 4 },
+  profileHandle: { fontSize: 13, color: '#7a9aaa', marginBottom: 2 },
+  profileCity: { fontSize: 12, color: '#4a6878' },
   statsGrid: {
     flexDirection: 'row', gap: 10,
     paddingHorizontal: 16, marginBottom: 16,
   },
   statBox: {
-    flex: 1, backgroundColor: '#1a1a24',
+    flex: 1, backgroundColor: '#0d2030',
     borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     padding: 12, alignItems: 'center',
   },
-  statBoxAccent: { borderColor: 'rgba(0,229,160,0.2)' },
-  statNum: { fontSize: 22, fontWeight: '900', color: '#f0f0f8', lineHeight: 26 },
-  statLbl: { fontSize: 9, color: '#5a5a72', fontWeight: '700', marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.3 },
+  statBoxAccent: { borderColor: 'rgba(33,165,106,0.2)' },
+  statNum: { fontSize: 22, fontWeight: '900', color: '#eef4f8', lineHeight: 26 },
+  statLbl: { fontSize: 9, color: '#4a6878', fontWeight: '700', marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.3 },
   section: { paddingHorizontal: 16, marginBottom: 20 },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#f0f0f8', marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#eef4f8', marginBottom: 12 },
   winRateRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  winRateLabel: { fontSize: 11, color: '#5a5a72', fontWeight: '600' },
+  winRateLabel: { fontSize: 11, color: '#4a6878', fontWeight: '600' },
   winRateNum: { fontSize: 13, fontWeight: '800' },
-  winRateBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6, backgroundColor: '#22222f' },
-  winRateFill: { backgroundColor: '#00e5a0' },
+  winRateBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6, backgroundColor: '#0d2030' },
+  winRateFill: { backgroundColor: '#21A56A' },
   winRateLoss: { backgroundColor: '#ff4a6e' },
   achievementGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   achievementCard: {
-    width: '30%', backgroundColor: '#1a1a24',
+    width: '30%', backgroundColor: '#0d2030',
     borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     padding: 12, alignItems: 'center', gap: 4, position: 'relative',
     minHeight: 90,
   },
-  achievementCardUnlocked: { borderColor: 'rgba(0,229,160,0.25)', backgroundColor: 'rgba(0,229,160,0.04)' },
+  achievementCardUnlocked: { borderColor: 'rgba(33,165,106,0.25)', backgroundColor: 'rgba(33,165,106,0.04)' },
   achievementEmoji: { fontSize: 26 },
-  achievementTitle: { fontSize: 10, fontWeight: '800', color: '#f0f0f8', textAlign: 'center' },
-  achievementDesc: { fontSize: 9, color: '#5a5a72', textAlign: 'center', lineHeight: 13 },
+  achievementTitle: { fontSize: 10, fontWeight: '800', color: '#eef4f8', textAlign: 'center' },
+  achievementDesc: { fontSize: 9, color: '#4a6878', textAlign: 'center', lineHeight: 13 },
   locked: { opacity: 0.3 },
-  lockedText: { color: '#5a5a72' },
+  lockedText: { color: '#4a6878' },
   unlockedBadge: {
     position: 'absolute', top: 6, right: 6,
     width: 16, height: 16, borderRadius: 8,
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     alignItems: 'center', justifyContent: 'center',
   },
   unlockedBadgeText: { fontSize: 9, fontWeight: '800', color: '#000' },
   recentCard: {
-    backgroundColor: '#1a1a24', borderRadius: 14,
+    backgroundColor: '#0d2030', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
   },
   recentRow: {
@@ -437,10 +431,10 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   recentDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  recentMatch: { flex: 1, fontSize: 13, fontWeight: '600', color: '#f0f0f8' },
+  recentMatch: { flex: 1, fontSize: 13, fontWeight: '600', color: '#eef4f8' },
   recentResult: { fontSize: 12, fontWeight: '800' },
   settingsCard: {
-    backgroundColor: '#1a1a24', borderRadius: 14,
+    backgroundColor: '#0d2030', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
   },
   settingRow: {
@@ -449,36 +443,39 @@ const s = StyleSheet.create({
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   settingIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-  settingTitle: { fontSize: 14, fontWeight: '600', color: '#f0f0f8' },
-  settingSub: { fontSize: 11, color: '#5a5a72', marginTop: 1 },
-  settingArrow: { fontSize: 20, color: '#3a3a52' },
+  settingTitle: { fontSize: 14, fontWeight: '600', color: '#eef4f8' },
+  settingSub: { fontSize: 11, color: '#4a6878', marginTop: 1 },
+  settingArrow: { fontSize: 20, color: '#2a4050' },
   settingDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.04)', marginHorizontal: 16 },
   adminBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'rgba(0,229,160,0.06)', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(0,229,160,0.2)',
+    backgroundColor: 'rgba(33,165,106,0.06)', borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(33,165,106,0.2)',
     paddingHorizontal: 16, paddingVertical: 14,
   },
   adminBtnIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-  adminBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#00e5a0' },
+  adminBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#21A56A' },
   friendsBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#1a1a24', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-    paddingHorizontal: 16, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: 'rgba(71,196,238,0.08)', borderRadius: 16,
+    borderWidth: 1.5, borderColor: 'rgba(71,196,238,0.3)',
+    paddingHorizontal: 18, paddingVertical: 16,
   },
-  friendsBtnText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#f0f0f8' },
+  friendsBtnIcon: { fontSize: 26 },
+  friendsBtnText: { fontSize: 16, fontWeight: '800', color: '#eef4f8' },
+  friendsBtnSub: { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  friendsBtnArrow: { fontSize: 22, color: '#47C4EE', fontWeight: '700' },
   signOutBtn: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
     paddingVertical: 14, alignItems: 'center', marginBottom: 10,
   },
-  signOutText: { fontSize: 15, fontWeight: '700', color: '#f0f0f8' },
+  signOutText: { fontSize: 15, fontWeight: '700', color: '#eef4f8' },
   deleteBtn: {
     backgroundColor: 'rgba(255,74,110,0.08)', borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(255,74,110,0.2)',
     paddingVertical: 14, alignItems: 'center', marginBottom: 16,
   },
   deleteText: { fontSize: 15, fontWeight: '700', color: '#ff4a6e' },
-  versionText: { fontSize: 11, color: '#3a3a52', textAlign: 'center' },
+  versionText: { fontSize: 11, color: '#2a4050', textAlign: 'center' },
 });

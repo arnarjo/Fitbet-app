@@ -46,8 +46,8 @@ export function useIncomingBets(userId: string) {
         .order('created_at', { ascending: false }),
     ]);
 
-    setBets(incoming.data || []);
-    setOutgoingBets(outgoing.data || []);
+    if (!incoming.error) setBets(incoming.data || []);
+    if (!outgoing.error) setOutgoingBets(outgoing.data || []);
     setLoading(false);
   }
 

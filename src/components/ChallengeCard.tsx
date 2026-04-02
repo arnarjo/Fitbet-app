@@ -41,7 +41,7 @@ export default function ChallengeCard({ challenge, currentUserId, onSubmitProof,
   const exOpt    = EXERCISE_OPTIONS[challenge.exercise as keyof typeof EXERCISE_OPTIONS];
   const emoji    = EXERCISE_EMOJI[challenge.exercise] ?? '💪';
 
-  const latestProof = challenge.proofs?.[challenge.proofs.length - 1];
+  const latestProof = challenge.proofs?.length ? challenge.proofs[challenge.proofs.length - 1] : undefined;
 
   async function handleUpload() {
     setUploading(true);

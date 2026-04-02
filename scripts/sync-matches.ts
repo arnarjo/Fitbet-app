@@ -70,7 +70,7 @@ async function upsertTeam(team: any, leagueName: string) {
 
   const { error: upsertError } = await supabase
     .from('teams')
-    .upsert(payload, { onConflict: 'external_id' });
+    .upsert(payload, { onConflict: 'external_id', ignoreDuplicates: true });
 
   if (upsertError) {
     throw new Error(`Teams upsert error: ${upsertError.message}`);

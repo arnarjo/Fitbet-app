@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import BetModal from '../components/BetModal';
 import { useBets } from '../hooks/useBets';
+import { usePremium } from '../hooks/usePremium';
 import type { Match, MatchResult } from '../types/database';
 
 // ── Types ────────────────────────────────────────────────────
@@ -29,13 +30,14 @@ type FeedItem = {
 
 type QuickMatch = Match & { betCount?: number };
 
-const AVATAR_COLORS = ['#00e5a0','#3d8bff','#ff4a6e','#ffc940','#a855f7','#ff9f40'];
+const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
 
 // ── Component ────────────────────────────────────────────────
 export default function HomeScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
   const { createBet } = useBets(profile?.id ?? '');
+  const { canAccessLeague } = usePremium();
 
   const [feed, setFeed]               = useState<FeedItem[]>([]);
   const [upcomingMatches, setUpcoming]= useState<QuickMatch[]>([]);
@@ -80,14 +82,13 @@ export default function HomeScreen() {
 
   async function fetchFeed() {
     if (!profile?.id) return;
-    const { data } = await supabase
+    const { data, error: myError } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    // Fetch friend IDs first, then get their activity
     const { data: friendships } = await supabase
       .from('friendships')
       .select('requester_id, addressee_id')
@@ -110,6 +111,8 @@ export default function HomeScreen() {
       friendActivity = fa ?? [];
     }
 
+    if (myError) return; // keep existing feed on error
+
     const allActivity = [
       ...(data ?? []).map((n: any, i: number) => buildFeedItem(n, true, i)),
       ...friendActivity.map((n: any, i: number) => buildFeedItem(n, false, i + 20)),
@@ -126,16 +129,16 @@ export default function HomeScreen() {
       : getInitials(actor);
 
     const typeMap: Record<string, { msg: string; hl: string; hlColor: string }> = {
-      bet_won:              { msg: 'vannst veðmál 🏆',              hl: 'vann',         hlColor: '#00e5a0' },
+      bet_won:              { msg: 'vannst veðmál 🏆',              hl: 'vann',         hlColor: '#21A56A' },
       bet_lost:             { msg: 'tapaðir veðmáli',               hl: 'tapaði',       hlColor: '#ff4a6e' },
-      bet_received:         { msg: 'fékk veðmálsbeiðni',            hl: 'beiðni',       hlColor: '#ffc940' },
-      bet_accepted:         { msg: 'samþykkti veðmál',              hl: 'samþykkt',     hlColor: '#3d8bff' },
+      bet_received:         { msg: 'fékk veðmálsspá',               hl: 'spá',          hlColor: '#ffc940' },
+      bet_accepted:         { msg: 'samþykkti veðmál',              hl: 'samþykkt',     hlColor: '#47C4EE' },
       challenge_assigned:   { msg: 'tapaðir og þarft að klára áskorun', hl: 'áskorun', hlColor: '#ff4a6e' },
       challenge_submitted:  { msg: 'sendi sönnun',                  hl: 'sönnun',       hlColor: '#ffc940' },
-      challenge_approved:   { msg: 'kláraði áskorun ✓',            hl: 'klárað',       hlColor: '#00e5a0' },
+      challenge_approved:   { msg: 'kláraði áskorun ✓',            hl: 'klárað',       hlColor: '#21A56A' },
       challenge_rejected:   { msg: 'sönnun hafnað — reyndu aftur', hl: 'hafnað',       hlColor: '#9090aa' },
       friend_request:       { msg: 'sendi þér vinarbeiðni',         hl: 'beiðni',       hlColor: '#a855f7' },
-      friend_accepted:      { msg: 'samþykkti vinarbeiðni',         hl: 'vinur',        hlColor: '#00e5a0' },
+      friend_accepted:      { msg: 'samþykkti vinarbeiðni',         hl: 'vinur',        hlColor: '#21A56A' },
     };
 
     const cfg = typeMap[n.type] ?? { msg: n.body ?? '', hl: '', hlColor: '#9090aa' };
@@ -155,14 +158,14 @@ export default function HomeScreen() {
   }
 
   async function fetchUpcoming() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('matches')
       .select('*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*)')
       .eq('status', 'upcoming')
       .gte('kickoff_time', new Date().toISOString())
       .order('kickoff_time', { ascending: true })
       .limit(8);
-    setUpcoming((data ?? []) as QuickMatch[]);
+    if (!error) setUpcoming((data ?? []) as QuickMatch[]);
   }
 
   async function fetchStats() {
@@ -171,8 +174,8 @@ export default function HomeScreen() {
       supabase.from('challenges').select('id', { count:'exact', head:true }).eq('loser_id', profile.id).eq('status', 'assigned'),
       supabase.from('bets').select('id', { count:'exact', head:true }).eq('opponent_id', profile.id).eq('status', 'pending'),
     ]);
-    setOpenCh(ch.count ?? 0);
-    setPendingBets(bets.count ?? 0);
+    if (!ch.error) setOpenCh(ch.count ?? 0);
+    if (!bets.error) setPendingBets(bets.count ?? 0);
   }
 
   const onRefresh = useCallback(async () => {
@@ -182,6 +185,10 @@ export default function HomeScreen() {
   }, [profile?.id]);
 
   function openBet(match: Match, pred: MatchResult) {
+    if (!canAccessLeague(match.league_name)) {
+      navigation.navigate('Paywall', { feature: 'general' });
+      return;
+    }
     setSelectedMatch(match);
     setSelectedPred(pred);
     setBetModal(true);
@@ -205,7 +212,7 @@ export default function HomeScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#21A56A" />}
         contentContainerStyle={s.scroll}
       >
         {/* ── Top bar ── */}
@@ -248,22 +255,24 @@ export default function HomeScreen() {
             <View style={s.heroTeams}>
               <View style={s.heroTeam}>
                 <Text style={s.heroTeamName}>{featuredMatch.home_team?.name}</Text>
-                <Text style={s.heroTeamSub}>Heimalið</Text>
+                <Text style={s.heroTeamSub}>Heima</Text>
               </View>
               <View style={s.heroVs}>
                 <Text style={s.heroVsText}>VS</Text>
               </View>
               <View style={[s.heroTeam, { alignItems:'flex-end' }]}>
                 <Text style={s.heroTeamName}>{featuredMatch.away_team?.name}</Text>
-                <Text style={[s.heroTeamSub, { textAlign:'right' }]}>Útlið</Text>
+                <Text style={[s.heroTeamSub, { textAlign:'right' }]}>Úti</Text>
               </View>
             </View>
             <TouchableOpacity
-              style={s.heroBtn}
+              style={[s.heroBtn, !canAccessLeague(featuredMatch.league_name) && s.heroBtnLocked]}
               onPress={() => openBet(featuredMatch, 'home')}
               activeOpacity={0.85}
             >
-              <Text style={s.heroBtnText}>Veðja á þennan leik →</Text>
+              <Text style={[s.heroBtnText, !canAccessLeague(featuredMatch.league_name) && { color:'#ffc940' }]}>
+                {canAccessLeague(featuredMatch.league_name) ? 'Veðja á þennan leik →' : '👑 Premium til að veðja'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -274,7 +283,7 @@ export default function HomeScreen() {
           transform: [{ translateY: statsAnim.interpolate({ inputRange:[0,1], outputRange:[20,0] }) }],
         }]}>
           <View style={[s.statBox, s.statBoxAccent]}>
-            <Text style={[s.statNum, { color:'#00e5a0' }]}>{points}</Text>
+            <Text style={[s.statNum, { color:'#21A56A' }]}>{points}</Text>
             <Text style={s.statLbl}>Stig</Text>
           </View>
           <View style={s.statBox}>
@@ -291,13 +300,29 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        {/* ── Season banner ── */}
+        <TouchableOpacity
+          style={s.seasonBanner}
+          onPress={() => navigation.navigate('Tímabilsveðmál')}
+          activeOpacity={0.85}
+        >
+          <View style={s.seasonBannerLeft}>
+            <Text style={s.seasonBannerEmoji}>🏆</Text>
+            <View>
+              <Text style={s.seasonBannerTitle}>Tímabilsveðmál</Text>
+              <Text style={s.seasonBannerSub}>Spáðu hvort lið endar ofar í deildinni</Text>
+            </View>
+          </View>
+          <Text style={s.seasonBannerArrow}>›</Text>
+        </TouchableOpacity>
+
         {/* ── Alert banners ── */}
         {openChallenges > 0 && (
           <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>⚠️</Text>
             <View style={{ flex:1 }}>
-              <Text style={s.alertBannerTitle}>{openChallenges} áskorun bíður!</Text>
-              <Text style={s.alertBannerSub}>Smelltu til að klára og senda sönnun</Text>
+              <Text style={s.alertBannerTitle}>{openChallenges} óskilin áskorun!</Text>
+              <Text style={s.alertBannerSub}>Kláraðu og sendu sönnun</Text>
             </View>
             <Text style={s.alertBannerArrow}>›</Text>
           </TouchableOpacity>
@@ -307,8 +332,8 @@ export default function HomeScreen() {
           <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>🎯</Text>
             <View style={{ flex:1 }}>
-              <Text style={[s.alertBannerTitle, { color:'#3d8bff' }]}>{pendingBets} veðmál bíður svars!</Text>
-              <Text style={s.alertBannerSub}>Vinur sendi þér veðmálsbeiðni</Text>
+              <Text style={[s.alertBannerTitle, { color:'#47C4EE' }]}>{pendingBets} ósvarað veðmál!</Text>
+              <Text style={s.alertBannerSub}>Vinur skorar á þig</Text>
             </View>
             <Text style={s.alertBannerArrow}>›</Text>
           </TouchableOpacity>
@@ -324,20 +349,25 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.quickScroll} contentContainerStyle={s.quickContent}>
-              {upcomingMatches.slice(1, 6).map(m => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={s.quickCard}
-                  onPress={() => openBet(m, 'home')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={s.quickLeague} numberOfLines={1}>{m.league_name}</Text>
-                  <Text style={s.quickTeams} numberOfLines={2}>
-                    {m.home_team?.short_name ?? m.home_team?.name}{'\n'}{m.away_team?.short_name ?? m.away_team?.name}
-                  </Text>
-                  <Text style={s.quickTime}>{formatKickoff(m.kickoff_time)}</Text>
-                </TouchableOpacity>
-              ))}
+              {upcomingMatches.slice(1, 6).map(m => {
+                const locked = !canAccessLeague(m.league_name);
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[s.quickCard, locked && s.quickCardLocked]}
+                    onPress={() => openBet(m, 'home')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.quickLeague} numberOfLines={1}>
+                      {locked ? '👑 ' : ''}{m.league_name}
+                    </Text>
+                    <Text style={s.quickTeams} numberOfLines={2}>
+                      {m.home_team?.short_name ?? m.home_team?.name}{'\n'}{m.away_team?.short_name ?? m.away_team?.name}
+                    </Text>
+                    <Text style={s.quickTime}>{formatKickoff(m.kickoff_time)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
@@ -348,7 +378,7 @@ export default function HomeScreen() {
           transform: [{ translateY: feedAnim.interpolate({ inputRange:[0,1], outputRange:[16,0] }) }],
         }]}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Virknistraumur</Text>
+            <Text style={s.sectionTitle}>Síðasta virkni</Text>
             {feed.length > 0 && (
               <View style={s.liveIndicator}>
                 <View style={s.liveDot} />
@@ -361,8 +391,8 @@ export default function HomeScreen() {
             {feed.length === 0 ? (
               <View style={s.feedEmpty}>
                 <Text style={s.feedEmptyIcon}>🏟</Text>
-                <Text style={s.feedEmptyTitle}>Straumurinn er tómur</Text>
-                <Text style={s.feedEmptySub}>Bíddu þar til vinir fara að veðja!</Text>
+                <Text style={s.feedEmptyTitle}>Ekkert að sýna ennþá</Text>
+                <Text style={s.feedEmptySub}>Byrjaðu að veðja og bjóddu vinum!</Text>
               </View>
             ) : (
               feed.map((item, idx) => (
@@ -490,7 +520,7 @@ const s = StyleSheet.create({
     borderWidth:2, borderColor:'rgba(0,229,160,0.3)',
     alignItems:'center', justifyContent:'center',
   },
-  profileInitials: { fontSize:13, fontWeight:'800', color:'#00e5a0' },
+  profileInitials: { fontSize:13, fontWeight:'800', color:'#21A56A' },
 
   // Hero card
   heroCard: {
@@ -506,7 +536,7 @@ const s = StyleSheet.create({
     backgroundColor:'rgba(0,229,160,0.12)',
     paddingHorizontal:10, paddingVertical:4, borderRadius:20,
   },
-  heroBadgeText: { fontSize:10, fontWeight:'800', color:'#00e5a0', letterSpacing:0.5 },
+  heroBadgeText: { fontSize:10, fontWeight:'800', color:'#21A56A', letterSpacing:0.5 },
   heroTime:   { fontSize:12, color:'#9090aa', fontWeight:'600' },
   heroTeams:  { flexDirection:'row', alignItems:'center', gap:12, marginBottom:16 },
   heroTeam:   { flex:1 },
@@ -519,9 +549,10 @@ const s = StyleSheet.create({
   },
   heroVsText: { fontSize:10, fontWeight:'900', color:'#5a5a72' },
   heroBtn: {
-    backgroundColor:'#00e5a0', borderRadius:12,
+    backgroundColor:'#21A56A', borderRadius:12,
     paddingVertical:12, alignItems:'center',
   },
+  heroBtnLocked: { backgroundColor:'rgba(255,201,64,0.15)', borderWidth:1, borderColor:'rgba(255,201,64,0.3)' },
   heroBtnText: { color:'#000', fontWeight:'800', fontSize:14, letterSpacing:0.2 },
 
   // Stats
@@ -559,14 +590,14 @@ const s = StyleSheet.create({
   section:      { paddingHorizontal:16, marginBottom:4 },
   sectionHeader:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 },
   sectionTitle: { fontSize:14, fontWeight:'800', color:'#f0f0f8' },
-  sectionLink:  { fontSize:12, color:'#00e5a0', fontWeight:'700' },
+  sectionLink:  { fontSize:12, color:'#21A56A', fontWeight:'700' },
 
   // Live indicator
   liveIndicator:{ flexDirection:'row', alignItems:'center', gap:5 },
   liveDot: {
-    width:6, height:6, borderRadius:3, backgroundColor:'#00e5a0',
+    width:6, height:6, borderRadius:3, backgroundColor:'#21A56A',
   },
-  liveText: { fontSize:10, fontWeight:'700', color:'#00e5a0', letterSpacing:0.5 },
+  liveText: { fontSize:10, fontWeight:'700', color:'#21A56A', letterSpacing:0.5 },
 
   // Quick matches
   quickScroll:  { marginHorizontal:-16 },
@@ -576,7 +607,8 @@ const s = StyleSheet.create({
     borderRadius:12, borderWidth:1, borderColor:'rgba(255,255,255,0.07)',
     padding:12,
   },
-  quickLeague:{ fontSize:9, fontWeight:'800', color:'#00e5a0', letterSpacing:0.8, textTransform:'uppercase', marginBottom:6 },
+  quickCardLocked: { borderColor:'rgba(255,201,64,0.2)', opacity:0.75 },
+  quickLeague:{ fontSize:9, fontWeight:'800', color:'#21A56A', letterSpacing:0.8, textTransform:'uppercase', marginBottom:6 },
   quickTeams: { fontSize:13, fontWeight:'800', color:'#f0f0f8', lineHeight:18, marginBottom:6 },
   quickTime:  { fontSize:10, color:'#5a5a72' },
 
@@ -613,4 +645,17 @@ const s = StyleSheet.create({
   feedEmptyIcon:  { fontSize:40 },
   feedEmptyTitle: { fontSize:15, fontWeight:'700', color:'#f0f0f8' },
   feedEmptySub:   { fontSize:13, color:'#5a5a72', textAlign:'center' },
+
+  seasonBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 16, marginBottom: 14,
+    backgroundColor: 'rgba(255,201,64,0.08)',
+    borderWidth: 1.5, borderColor: 'rgba(255,201,64,0.3)',
+    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14,
+  },
+  seasonBannerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  seasonBannerEmoji: { fontSize: 28 },
+  seasonBannerTitle: { fontSize: 15, fontWeight: '800', color: '#f0f0f8', marginBottom: 2 },
+  seasonBannerSub:   { fontSize: 11, color: '#9090aa' },
+  seasonBannerArrow: { fontSize: 22, color: '#ffc940', fontWeight: '700' },
 });

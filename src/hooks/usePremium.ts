@@ -14,6 +14,7 @@ export const FREE_LEAGUES = [
 export const PREMIUM_LEAGUES = [
   'Premier League',
   'UEFA Champions League',
+  'FIFA World Cup',
 ];
 
 // ── Limits ───────────────────────────────────────────────────

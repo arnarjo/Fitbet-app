@@ -13,14 +13,15 @@ type Props = {
 };
 
 const LEAGUE_COLORS: Record<string, string> = {
-  'Premier League': '#00e5a0',
-  'UEFA Champions League': '#3d8bff',
-  'Besta deild karla': '#ffc940',
+  'Premier League': '#21A56A',
+  'UEFA Champions League': '#47C4EE',
+  'FIFA World Cup': '#ff4a6e',
+  'Besta deild karla': '#FFC845',
   'Lengjudeild karla': '#ff9f40',
 };
 
 export default function MatchCard({ match, onOpenBet }: Props) {
-  const accentColor = LEAGUE_COLORS[match.league_name] ?? '#00e5a0';
+  const accentColor = LEAGUE_COLORS[match.league_name] ?? '#21A56A';
 
   const isFinished =
     match.status === 'finished' ||
@@ -102,7 +103,7 @@ function formatKickoff(iso: string) {
 
 const s = StyleSheet.create({
   card: {
-    backgroundColor: '#1a1a24',
+    backgroundColor: '#0d2030',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
@@ -129,7 +130,7 @@ const s = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    color: '#9090aa',
+    color: '#7a9aaa',
     fontWeight: '600',
   },
   teamsRow: {
@@ -143,7 +144,7 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '800',
-    color: '#f0f0f8',
+    color: '#eef4f8',
   },
   teamRight: {
     textAlign: 'right',
@@ -156,7 +157,7 @@ const s = StyleSheet.create({
   vsText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#5a5a72',
+    color: '#4a6878',
   },
   scoreBox: {
     flexDirection: 'row',
@@ -166,11 +167,11 @@ const s = StyleSheet.create({
   scoreText: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#f0f0f8',
+    color: '#eef4f8',
   },
   scoreDash: {
     fontSize: 16,
-    color: '#5a5a72',
+    color: '#4a6878',
     fontWeight: '700',
   },
   challengeBtn: {
@@ -198,6 +199,6 @@ const s = StyleSheet.create({
   finishedBannerText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#5a5a72',
+    color: '#4a6878',
   },
 });

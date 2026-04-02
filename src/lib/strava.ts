@@ -10,7 +10,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const STRAVA_CLIENT_ID     = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID!;
 const STRAVA_CLIENT_SECRET = process.env.EXPO_PUBLIC_STRAVA_CLIENT_SECRET!;
-const REDIRECT_URI         = Linking.createURL('strava-callback');
+const REDIRECT_URI = 'fitbet://localhost/strava-callback';
 
 const STRAVA_AUTH_URL    = 'https://www.strava.com/oauth/mobile/authorize';
 const STRAVA_TOKEN_URL   = 'https://www.strava.com/oauth/token';

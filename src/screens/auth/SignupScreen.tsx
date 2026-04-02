@@ -77,10 +77,13 @@ export default function SignupScreen({ navigation }: Props) {
   function validateStep2(): boolean {
     const newErrors: FormErrors = {};
     if (!email.trim()) newErrors.email = 'Netfang vantar';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Netfang er ekki gilt';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()))
+      newErrors.email = 'Netfang er ekki gilt';
 
     if (!password) newErrors.password = 'Lykilorð vantar';
     else if (password.length < 8) newErrors.password = 'Lykilorð þarf að vera a.m.k. 8 stafir';
+    else if (!/[A-Z]/.test(password)) newErrors.password = 'Þarf að innihalda a.m.k. einn hástaf';
+    else if (!/[0-9]/.test(password)) newErrors.password = 'Þarf að innihalda a.m.k. eina tölu';
 
     if (!confirm) newErrors.confirm = 'Staðfesting vantar';
     else if (password !== confirm) newErrors.confirm = 'Lykilorð stemma ekki';
@@ -108,7 +111,7 @@ export default function SignupScreen({ navigation }: Props) {
         setErrors({ username: 'Þetta notandanafn er þegar tekið' });
         setStep(1);
       } else {
-        Alert.alert('Villa', error.message);
+        Alert.alert('Villa', 'Óvænt villa kom upp. Reyndu aftur.');
       }
     } else {
       Alert.alert(
@@ -123,17 +126,18 @@ export default function SignupScreen({ navigation }: Props) {
   function getPasswordStrength(): { label: string; color: string; width: string } {
     if (!password) return { label: '', color: 'transparent', width: '0%' };
     if (password.length < 6) return { label: 'Veikt', color: '#ff4a6e', width: '25%' };
-    if (password.length < 8) return { label: 'Meðal', color: '#ffc940', width: '50%' };
-    if (password.length < 12 && !/[A-Z]/.test(password))
-      return { label: 'Gott', color: '#3d8bff', width: '75%' };
-    return { label: 'Sterkt 💪', color: '#00e5a0', width: '100%' };
+    if (password.length < 8) return { label: 'Meðal', color: '#FFC845', width: '50%' };
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    if (!hasUpper || !hasNumber) return { label: 'Gott', color: '#47C4EE', width: '75%' };
+    return { label: 'Sterkt 💪', color: '#21A56A', width: '100%' };
   }
 
   const strength = getPasswordStrength();
 
   return (
     <SafeAreaView style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" />
+      <StatusBar barStyle="light-content" backgroundColor="#071D2A" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -178,7 +182,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.fullName ? s.inputError : null]}
                     placeholder="Jón Jónsson"
-                    placeholderTextColor="#3a3a52"
+                    placeholderTextColor="#2a4050"
                     value={fullName}
                     onChangeText={(t) => { setFullName(t); clearError('fullName'); }}
                     autoCapitalize="words"
@@ -196,7 +200,7 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.prefixInput, errors.username ? s.inputError : null]}
                       placeholder="jon.jonsson"
-                      placeholderTextColor="#3a3a52"
+                      placeholderTextColor="#2a4050"
                       value={username}
                       onChangeText={(t) => { setUsername(t.toLowerCase().replace(/\s/g, '')); clearError('username'); }}
                       autoCapitalize="none"
@@ -205,11 +209,7 @@ export default function SignupScreen({ navigation }: Props) {
                       onSubmitEditing={handleNext}
                     />
                   </View>
-                  {errors.username
-                    ? <Text style={s.errorText}>{errors.username}</Text>
-                    : username.length > 0 && USERNAME_REGEX.test(username) &&
-                      <Text style={s.successText}>✓ @{username} er laust</Text>
-                  }
+                  {errors.username && <Text style={s.errorText}>{errors.username}</Text>}
                 </View>
 
                 <TouchableOpacity style={s.primaryBtn} onPress={handleNext} activeOpacity={0.85}>
@@ -224,7 +224,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.email ? s.inputError : null]}
                     placeholder="þú@dæmi.is"
-                    placeholderTextColor="#3a3a52"
+                    placeholderTextColor="#2a4050"
                     value={email}
                     onChangeText={(t) => { setEmail(t); clearError('email'); }}
                     keyboardType="email-address"
@@ -243,7 +243,7 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.passwordInput, errors.password ? s.inputError : null]}
                       placeholder="a.m.k. 8 stafir"
-                      placeholderTextColor="#3a3a52"
+                      placeholderTextColor="#2a4050"
                       value={password}
                       onChangeText={(t) => { setPassword(t); clearError('password'); }}
                       secureTextEntry={!showPassword}
@@ -273,7 +273,7 @@ export default function SignupScreen({ navigation }: Props) {
                     style={[s.input, errors.confirm ? s.inputError : null,
                       confirm.length > 0 && password === confirm ? s.inputSuccess : null]}
                     placeholder="Endurtaktu lykilorðið"
-                    placeholderTextColor="#3a3a52"
+                    placeholderTextColor="#2a4050"
                     value={confirm}
                     onChangeText={(t) => { setConfirm(t); clearError('confirm'); }}
                     secureTextEntry={!showPassword}
@@ -303,7 +303,7 @@ export default function SignupScreen({ navigation }: Props) {
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={s.loginLink}>
             <Text style={s.loginLinkText}>
-              Á nú aðgangi? <Text style={{ color: '#00e5a0', fontWeight: '700' }}>Skráðu þig inn</Text>
+              Á nú aðgangi? <Text style={{ color: '#21A56A', fontWeight: '700' }}>Skráðu þig inn</Text>
             </Text>
           </TouchableOpacity>
 
@@ -324,11 +324,11 @@ export default function SignupScreen({ navigation }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 48 },
 
   backBtn: { paddingTop: 8, paddingBottom: 12, alignSelf: 'flex-start' },
-  backText: { color: '#5a5a72', fontSize: 14, fontWeight: '600' },
+  backText: { color: '#4a6878', fontSize: 14, fontWeight: '600' },
 
   progressBar: {
     height: 3,
@@ -339,12 +339,12 @@ const s = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     borderRadius: 2,
   },
   progressLabel: {
     fontSize: 11,
-    color: '#3a3a52',
+    color: '#2a4050',
     marginBottom: 24,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -353,20 +353,20 @@ const s = StyleSheet.create({
   logo: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#00e5a0',
+    color: '#21A56A',
     letterSpacing: 5,
     marginBottom: 14,
   },
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#f0f0f8',
+    color: '#eef4f8',
     marginBottom: 6,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 14,
-    color: '#5a5a72',
+    color: '#4a6878',
     marginBottom: 28,
     lineHeight: 20,
   },
@@ -375,29 +375,29 @@ const s = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#5a5a72',
+    color: '#4a6878',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: '#f0f0f8',
+    color: '#eef4f8',
     fontSize: 15,
     flex: 1,
   },
   inputError: { borderColor: '#ff4a6e' },
-  inputSuccess: { borderColor: '#00e5a0' },
+  inputSuccess: { borderColor: '#21A56A' },
   errorText: { color: '#ff4a6e', fontSize: 12, marginTop: 5, marginLeft: 4 },
-  successText: { color: '#00e5a0', fontSize: 12, marginTop: 5, marginLeft: 4 },
+  successText: { color: '#21A56A', fontSize: 12, marginTop: 5, marginLeft: 4 },
 
   prefixRow: { flexDirection: 'row', alignItems: 'center' },
   prefixBox: {
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderWidth: 1,
     borderRightWidth: 0,
     borderColor: 'rgba(255,255,255,0.08)',
@@ -407,13 +407,13 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     justifyContent: 'center',
   },
-  prefixText: { color: '#5a5a72', fontSize: 16, fontWeight: '600' },
+  prefixText: { color: '#4a6878', fontSize: 16, fontWeight: '600' },
   prefixInput: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
 
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   eyeBtn: {
-    backgroundColor: '#111118',
+    backgroundColor: '#071D2A',
     borderWidth: 1,
     borderLeftWidth: 0,
     borderColor: 'rgba(255,255,255,0.08)',
@@ -442,7 +442,7 @@ const s = StyleSheet.create({
   strengthLabel: { fontSize: 11, fontWeight: '700', minWidth: 60, textAlign: 'right' },
 
   primaryBtn: {
-    backgroundColor: '#00e5a0',
+    backgroundColor: '#21A56A',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -452,13 +452,13 @@ const s = StyleSheet.create({
   primaryBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
 
   loginLink: { alignItems: 'center', marginTop: 24, marginBottom: 16 },
-  loginLinkText: { color: '#5a5a72', fontSize: 14 },
+  loginLinkText: { color: '#4a6878', fontSize: 14 },
 
   termsText: {
     fontSize: 12,
-    color: '#3a3a52',
+    color: '#2a4050',
     textAlign: 'center',
     lineHeight: 18,
   },
-  termsLink: { color: '#5a5a72', textDecorationLine: 'underline' },
+  termsLink: { color: '#4a6878', textDecorationLine: 'underline' },
 });

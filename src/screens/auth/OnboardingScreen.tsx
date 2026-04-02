@@ -26,21 +26,21 @@ const slides = [
     emoji: '⚽',
     title: 'Veðjaðu við vini',
     subtitle: 'Spáðu fyrir um niðurstöður leikja í Premier League, Bestu deild og Champions League.',
-    accent: '#00e5a0',
+    accent: '#21A56A',
   },
   {
     id: '2',
     emoji: '💪',
-    title: 'Tapi = Þjálfun',
-    subtitle: 'Enginn peningur á í leik. Sá sem tapar þarf að klára líkamsþjálfunaráskorun.',
-    accent: '#3d8bff',
+    title: 'Tap = Æfing',
+    subtitle: 'Enginn peningur á í leik. Sá sem tapar þarf að klára líkamsæfingaráskorun.',
+    accent: '#47C4EE',
   },
   {
     id: '3',
     emoji: '🏆',
     title: 'Safnaðu stigum',
     subtitle: 'Kepptu við vini og vinnufélaga. Vertu efst á stigatöflunni í hópi þínum.',
-    accent: '#ffc940',
+    accent: '#FFC845',
   },
   {
     id: '4',
@@ -69,11 +69,11 @@ export default function OnboardingScreen({ navigation }: Props) {
     navigation.navigate('Login');
   }
 
-  const currentAccent = slides[currentIndex]?.accent ?? '#00e5a0';
+  const currentAccent = slides[currentIndex]?.accent ?? '#21A56A';
 
   return (
     <SafeAreaView style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" />
+      <StatusBar barStyle="light-content" backgroundColor="#071D2A" />
 
       {/* Skip button */}
       <View style={s.topBar}>
@@ -155,7 +155,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0f',
+    backgroundColor: '#071D2A',
   },
   topBar: {
     flexDirection: 'row',
@@ -166,7 +166,7 @@ const s = StyleSheet.create({
     paddingBottom: 4,
   },
   skipText: {
-    color: '#5a5a72',
+    color: '#4a6878',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -198,14 +198,14 @@ const s = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#f0f0f8',
+    color: '#eef4f8',
     textAlign: 'center',
     marginBottom: 14,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#9090aa',
+    color: '#7a9aaa',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -241,7 +241,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   loginLinkText: {
-    color: '#5a5a72',
+    color: '#4a6878',
     fontSize: 14,
     fontWeight: '500',
   },

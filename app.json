@@ -13,7 +13,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0a0a0f"
+      "backgroundColor": "#071D2A"
     },
     "ios": {
       "supportsTablet": false,
@@ -37,7 +37,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0f"
+        "backgroundColor": "#071D2A"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -53,7 +53,7 @@
       [
         "expo-notifications",
         {
-          "color": "#00e5a0",
+          "color": "#21A56A",
           "defaultChannel": "default",
           "androidMode": "default",
           "androidCollapsedTitle": "FitBet"

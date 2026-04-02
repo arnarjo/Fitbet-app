@@ -130,6 +130,7 @@ export function usePushNotifications(
     if (!projectId) return;
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (!token) return;
     setExpoPushToken(token);
 
     // Save token to Supabase
@@ -187,23 +188,7 @@ export function usePushNotifications(
       .eq('read', false);
   }
 
-  // ── Manual: send test push (dev only) ────────────────────
-  async function sendTestPush() {
-    if (!expoPushToken) return;
-    await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to:    expoPushToken,
-        title: 'FitBet próf 🎯',
-        body:  'Push tilkynningar virka! Vel gert.',
-        data:  { type: 'test' },
-        sound: 'default',
-      }),
-    });
-  }
-
-  return { expoPushToken, permissionStatus, sendTestPush };
+  return { expoPushToken, permissionStatus };
 }
 
 

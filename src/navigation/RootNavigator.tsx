@@ -30,11 +30,11 @@ const Tab   = createBottomTabNavigator();
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    Heim:           '⚽',
-    Leikir:         '📅',
-    Áskoranir:      '💪',
-    Tímabilsveðmál: '🏆',
-    Prófíll:        '👤',
+    Heim:       '⚽',
+    Leikir:     '📅',
+    Áskoranir:  '💪',
+    Stigatafla: '🏆',
+    Prófíll:    '👤',
   };
   return (
     <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
@@ -50,8 +50,8 @@ function MainTabs() {
         headerShown: false,
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
         tabBarStyle: {
-          backgroundColor: '#05060a',
-          borderTopColor: '#1a1d24',
+          backgroundColor: '#050f17',
+          borderTopColor: '#0d2030',
           borderTopWidth: 1,
           height: 82,
           paddingTop: 8,
@@ -59,15 +59,15 @@ function MainTabs() {
         },
         tabBarLabelStyle: { marginBottom: 4, fontSize: 10 },
         tabBarItemStyle:  { paddingVertical: 4 },
-        tabBarActiveTintColor:   '#00e5a0',
-        tabBarInactiveTintColor: '#5a5a72',
+        tabBarActiveTintColor:   '#21A56A',
+        tabBarInactiveTintColor: '#4a6878',
       })}
     >
-      <Tab.Screen name="Heim"           component={HomeScreen} />
-      <Tab.Screen name="Leikir"         component={MatchesScreen} />
-      <Tab.Screen name="Áskoranir"      component={ChallengesScreen} />
-      <Tab.Screen name="Tímabilsveðmál" component={SeasonScreen} />
-      <Tab.Screen name="Prófíll"        component={ProfileScreen} />
+      <Tab.Screen name="Heim"        component={HomeScreen} />
+      <Tab.Screen name="Leikir"      component={MatchesScreen} />
+      <Tab.Screen name="Áskoranir"   component={ChallengesScreen} />
+      <Tab.Screen name="Stigatafla"  component={LeaderboardScreen} />
+      <Tab.Screen name="Prófíll"     component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -107,12 +107,13 @@ export default function RootNavigator({ onRouteChange }: RootNavigatorProps) {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
           <>
-            <Stack.Screen name="Main"         component={MainTabs} />
-            <Stack.Screen name="Leaderboard"  component={LeaderboardScreen} />
-            <Stack.Screen name="Leagues"      component={LeaguesScreen} />
-            <Stack.Screen name="Friends"      component={FriendsScreen} />
-            <Stack.Screen name="Admin"        component={AdminScreen} />
-            <Stack.Screen name="Paywall"      component={PaywallScreen}
+            <Stack.Screen name="Main"              component={MainTabs} />
+            <Stack.Screen name="Tímabilsveðmál"   component={SeasonScreen} />
+            <Stack.Screen name="Leaderboard"       component={LeaderboardScreen} />
+            <Stack.Screen name="Leagues"           component={LeaguesScreen} />
+            <Stack.Screen name="Friends"           component={FriendsScreen} />
+            <Stack.Screen name="Admin"             component={AdminScreen} />
+            <Stack.Screen name="Paywall"           component={PaywallScreen}
               options={{ presentation: 'modal' }} />
           </>
         ) : (

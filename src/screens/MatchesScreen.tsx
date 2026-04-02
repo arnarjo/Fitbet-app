@@ -15,15 +15,16 @@ import BetModal from '../components/BetModal';
 import { useMatches } from '../hooks/useMatches';
 import { useBets } from '../hooks/useBets';
 import { useAuth } from '../hooks/useAuth';
-import { usePremium, PREMIUM_LEAGUES } from '../hooks/usePremium';
+import { usePremium } from '../hooks/usePremium';
 import type { Match, MatchResult, Exercise } from '../types/database';
 
 const LEAGUES = [
   { key: 'all', label: 'Allir' },
-  { key: 'Premier League', label: 'Premier League' },
-  { key: 'UEFA Champions League', label: 'Champions Lg' },
   { key: 'Besta deild karla', label: 'Besta deildin' },
   { key: 'Lengjudeild karla', label: 'Lengjudeildin' },
+  { key: 'Premier League', label: 'Premier League' },
+  { key: 'UEFA Champions League', label: 'Champions Lg' },
+  { key: 'FIFA World Cup', label: 'World Cup' },
 ];
 
 export default function MatchesScreen() {
@@ -129,7 +130,7 @@ export default function MatchesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#00e5a0"
+            tintColor="#21A56A"
           />
         }
       >
@@ -202,7 +203,7 @@ export default function MatchesScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+  container: { flex: 1, backgroundColor: '#071D2A' },
   header: {
     paddingHorizontal: 20,
     paddingTop: 4,
@@ -211,7 +212,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#f0f0f8',
+    color: '#eef4f8',
   },
   tabsScroll: { flexGrow: 0 },
   tabsContent: {
@@ -227,31 +228,31 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tabActive: {
-    backgroundColor: '#00e5a0',
-    borderColor: '#00e5a0',
+    backgroundColor: '#21A56A',
+    borderColor: '#21A56A',
   },
   tabText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9090aa',
+    color: '#7a9aaa',
   },
   tabTextActive: { color: '#000' },
-  tabLocked: { borderColor: 'rgba(255,201,64,0.2)', borderStyle: 'dashed' },
-  tabTextLocked: { color: '#5a5a72' },
+  tabLocked: { borderColor: 'rgba(255,200,69,0.2)', borderStyle: 'dashed' },
+  tabTextLocked: { color: '#4a6878' },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 16 },
   dateLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#5a5a72',
+    color: '#4a6878',
     letterSpacing: 1.5,
     marginBottom: 8,
     marginTop: 4,
   },
   loadingState: { alignItems: 'center', paddingTop: 80 },
-  loadingText: { color: '#5a5a72', fontSize: 14 },
+  loadingText: { color: '#4a6878', fontSize: 14 },
   emptyState: { alignItems: 'center', paddingTop: 80, gap: 10 },
   emptyIcon: { fontSize: 44 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#f0f0f8' },
-  emptySub: { fontSize: 13, color: '#5a5a72', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#eef4f8' },
+  emptySub: { fontSize: 13, color: '#4a6878', textAlign: 'center' },
 });

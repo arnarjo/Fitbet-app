@@ -25,7 +25,7 @@ export function useChallenges(userId: string) {
 
   async function submitPhotoProof(challengeId: string) {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images', 'videos'],
       quality: 0.7,
     });
 
@@ -44,15 +44,19 @@ export function useChallenges(userId: string) {
 
     if (uploadError) return { error: uploadError };
 
-    const { data: { publicUrl } } = supabase.storage
+    const { data: urlData } = supabase.storage
       .from('challenge-proofs')
       .getPublicUrl(fileName);
+
+    if (!urlData?.publicUrl) {
+      return { error: new Error('Ekki tókst að fá slóð á skrána. Reyndu aftur.') };
+    }
 
     const { error } = await supabase.from('challenge_proofs').insert({
       challenge_id: challengeId,
       submitted_by: userId,
       proof_type: asset.type === 'video' ? 'video' : 'photo',
-      file_url: publicUrl,
+      file_url: urlData.publicUrl,
     });
 
     if (!error) {

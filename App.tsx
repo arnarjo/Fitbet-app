@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import RootNavigator from './src/navigation/RootNavigator';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
-import { loadSavedLanguage } from './src/lib/i18n';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import FloatingChallengeButton from './src/components/FloatingChallengeButton';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -17,8 +16,6 @@ function AppInner() {
   usePushNotifications(session?.user?.id ?? '', navigationRef);
 
   useEffect(() => {
-    loadSavedLanguage();
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
