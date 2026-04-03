@@ -298,7 +298,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={s.settingRow}
-              onPress={() => Linking.openURL('https://fitbet.is/privacy')}
+              onPress={() => Linking.openURL('https://arnarjo.github.io/Fitbet-app/privacy-policy.html')}
             >
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>🔒</Text>

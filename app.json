@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.fitbet.app",
-      "versionCode": 1,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#071D2A"

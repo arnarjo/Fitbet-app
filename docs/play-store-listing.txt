@@ -3,39 +3,30 @@ FITBET — GOOGLE PLAY STORE LISTING
 ================================================================
 
 --- SHORT DESCRIPTION (80 stafir hámark) ---
-Veðjaðu við vini um líkamsrækt. Hlaup, hjólreiðar, armbeygjur — staðfest með Strava.
+Veðjaðu við vini um líkamsrækt — hlaup, hjólreiðar og KSI leiki. Staðfest með Strava.
 
 
---- FULL DESCRIPTION (4000 stafir hámark) ---
-FitBet breytir líkamsrækt í leik.
+--- FULL DESCRIPTION ---
+Ertu nógu góð/ur til að klára 10 km hlaup? Hvað með 100 armbeygjur? Settu eitthvað í húfuna og finndu það út.
 
-Veðjaðu við vini um líkamsrækt og KSI knattspyrnuleiki. Tabber þú 10 km hlaupi? Geturu klárað 100 armbeygjur? Staðfestu áskoranir sjálfkrafa í gegnum Strava — engin mynd þarf.
+FitBet er íslenskt líkamsræktarveðmálaforrit þar sem þú veðjar við vini um æfingar og KSI knattspyrnuleiki. Tapari klárar áskorunina — sigurvegarinn gleypur dýrðina.
 
-🏃 ÁSKORANIR
-• Hlaup, hjólreiðar, armbeygjur, hnébeygjur og burpees
-• Tengdu Strava og æfingar staðfestast sjálfkrafa
-• Deildu sönnunarmyndum þegar Strava er ekki tengt
+— LÍKAMSRÆKTARVEÐMÁL —
+Bjóddu vini í veðmál um hlaup, hjólreiðar, armbeygjur, hnébeygjur eða burpees. Veldu tegund æfingar og magn — og leyfðu Strava að staðfesta sjálfkrafa þegar þú klárar. Ekkert tromp, engar afsakanir.
 
-⚽ TÍMABILSVEÐMÁL
-• Spáðu í KSI Úrvalsdeild og Bestu deild karla
-• Veðjaðu á hvaða lið endar ofar gegn vinum þínum
-• KSI liðsmerki og rauntíma leikjadagatal
+— TÍMABILSVEÐMÁL —
+Spáðu í KSI Úrvalsdeild og Bestu deild karla. Veðjaðu á hvaða lið endar ofar á tímabilinu gegn vinum þínum. Leikjadagatal, liðsmerki og rauntíma standa fylgjast með.
 
-🏆 STIGATAFLA
-• Heimsstigatafla með pódíum
-• Vinastigatafla — sjáðu hvernig þú stendur þér gagnvart vinum
-• Einkabikar deildir — búðu til deild með vinnufélögum eða fjölskyldu
+— STIGATAFLA —
+Heimsstigatafla með pódíum sýnir bestu FitBet leikendur landsins. Vinastigataflan sýnir hvernig þú stendur þér gagnvart þeim sem þú þekkir. Búðu til einkabikar deild með vinnufélögum, fjölskyldu eða vinum og sjáðu hver er bestur.
 
-💪 VERÐLAUN
-• Opnaðu verðlaun fyrir sigra og áskoranir
-• Safnaðu stigum og klifraðu upp stigatöfluna
+— STRAVA TENGING —
+Tengdu Strava reikninginn þinn og allar æfingar staðfestast sjálfkrafa — engin sönnunarmynd þarf. Virkar með Apple Watch, Garmin og öllum öðrum Strava-samhæfðum tækjum.
 
-📱 EINFALT OG HRATT
-• Stofnaðu reikning á nokkrum sekúndum
-• Bjóddu vinum beint í gegnum appið
-• Myrkur útlit, hannað fyrir Íslendinga
+— VERÐLAUN —
+Opnaðu verðlaun eftir því sem þú sigrar og klárar áskoranir. Safnaðu stigum og klifraðu upp stigatöfluna.
 
-FitBet er þróað á Íslandi fyrir Íslendinga.
+FitBet er þróað á Íslandi fyrir Íslendinga. Með í hverri æfingu.
 
 Hafðu samband: support@fitbet.is
 
@@ -74,7 +65,7 @@ Target age: 13+
 --- CONTACT INFO ---
 Email: support@fitbet.is
 Website: https://fitbet.is
-Privacy Policy: https://fitbet.is/privacy
+Privacy Policy: https://arnarjo.github.io/Fitbet-app/privacy-policy.html
 
 
 ================================================================

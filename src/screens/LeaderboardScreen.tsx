@@ -7,9 +7,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import type { LeaderboardEntry, League } from '../types/database';
+import type { LeaderboardEntry } from '../types/database';
 
-type Tab = 'global' | 'friends' | 'league';
+type Tab = 'global' | 'friends';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
@@ -23,9 +23,6 @@ export default function LeaderboardScreen() {
   const [tab, setTab]               = useState<Tab>('global');
   const [global, setGlobal]         = useState<LeaderboardEntry[]>([]);
   const [friendsBoard, setFriendsBoard] = useState<LeaderboardEntry[]>([]);
-  const [leagues, setLeagues]       = useState<League[]>([]);
-  const [activeLeague, setActiveLeague] = useState<League | null>(null);
-  const [leagueBoard, setLeagueBoard]   = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,7 +42,7 @@ export default function LeaderboardScreen() {
 
   async function fetchAll() {
     setLoading(true);
-    await Promise.all([fetchGlobal(), fetchLeagues(), fetchFriendsBoard()]);
+    await Promise.all([fetchGlobal(), fetchFriendsBoard()]);
     setLoading(false);
   }
 
@@ -71,42 +68,9 @@ export default function LeaderboardScreen() {
     const { data } = await supabase
       .from('leaderboard')
       .select('*')
+      .order('total_points', { ascending: false })
       .limit(50);
     setGlobal((data ?? []) as LeaderboardEntry[]);
-  }
-
-  async function fetchLeagues() {
-    if (!profile?.id) return;
-    const { data } = await supabase
-      .from('league_members')
-      .select('league:leagues(*)')
-      .eq('user_id', profile.id);
-    const list = (data ?? []).map((r: any) => r.league).filter(Boolean) as League[];
-    setLeagues(list);
-    if (list.length > 0 && !activeLeague) {
-      setActiveLeague(list[0]);
-      await fetchLeagueBoard(list[0].id);
-    }
-  }
-
-  async function fetchLeagueBoard(leagueId: string) {
-    const { data: members, error: membersError } = await supabase
-      .from('league_members')
-      .select('user_id')
-      .eq('league_id', leagueId);
-
-    if (membersError) { setLeagueBoard([]); return; }
-
-    const ids = (members ?? []).map((m: any) => m.user_id);
-    if (ids.length === 0) { setLeagueBoard([]); return; }
-
-    const { data, error } = await supabase
-      .from('leaderboard')
-      .select('*')
-      .in('id', ids)
-      .limit(100);
-
-    if (!error) setLeagueBoard((data ?? []) as LeaderboardEntry[]);
   }
 
   const onRefresh = useCallback(async () => {
@@ -115,7 +79,7 @@ export default function LeaderboardScreen() {
     setRefreshing(false);
   }, [profile?.id]);
 
-  const displayBoard = tab === 'global' ? global : tab === 'friends' ? friendsBoard : leagueBoard;
+  const displayBoard = tab === 'global' ? global : friendsBoard;
   const myRank = displayBoard.findIndex(e => e.id === profile?.id) + 1;
   const myEntry = displayBoard.find(e => e.id === profile?.id);
 
@@ -152,35 +116,7 @@ export default function LeaderboardScreen() {
             Vinir ({friendsBoard.length})
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.tab, tab === 'league' && s.tabActive]}
-          onPress={() => setTab('league')}
-        >
-          <Text style={[s.tabText, tab === 'league' && s.tabTextActive]}>
-            Deildir ({leagues.length})
-          </Text>
-        </TouchableOpacity>
       </View>
-
-      {/* League selector */}
-      {tab === 'league' && leagues.length > 1 && (
-        <ScrollView
-          horizontal showsHorizontalScrollIndicator={false}
-          style={s.leagueScroll} contentContainerStyle={s.leagueScrollContent}
-        >
-          {leagues.map(lg => (
-            <TouchableOpacity
-              key={lg.id}
-              style={[s.leagueChip, activeLeague?.id === lg.id && s.leagueChipActive]}
-              onPress={() => { setActiveLeague(lg); fetchLeagueBoard(lg.id); }}
-            >
-              <Text style={[s.leagueChipText, activeLeague?.id === lg.id && s.leagueChipTextActive]}>
-                {lg.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -272,7 +208,7 @@ export default function LeaderboardScreen() {
             <Text style={s.emptyIcon}>🏆</Text>
             <Text style={s.emptyTitle}>Engar færslur ennþá</Text>
             <Text style={s.emptySub}>
-              {tab === 'league' ? 'Enginn í þessari deild hefur safnað stigum' : tab === 'friends' ? 'Bættu við vinum í Prófíl flipanum' : 'Farðu og veðjaðu!'}
+              {tab === 'friends' ? 'Bættu við vinum í Prófíl flipanum' : 'Farðu og veðjaðu!'}
             </Text>
           </View>
         )}
@@ -331,15 +267,6 @@ const s = StyleSheet.create({
   tabActive: { backgroundColor: 'rgba(0,229,160,0.1)', borderColor: 'rgba(0,229,160,0.3)' },
   tabText: { fontSize: 13, fontWeight: '700', color: '#5a5a72' },
   tabTextActive: { color: '#00e5a0' },
-  leagueScroll: { flexGrow: 0, marginBottom: 12 },
-  leagueScrollContent: { paddingHorizontal: 16, gap: 8 },
-  leagueChip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-  },
-  leagueChipActive: { backgroundColor: 'rgba(0,229,160,0.1)', borderColor: '#00e5a0' },
-  leagueChipText: { fontSize: 12, fontWeight: '700', color: '#9090aa' },
-  leagueChipTextActive: { color: '#00e5a0' },
   scroll: { paddingHorizontal: 16 },
 
   // Podium
