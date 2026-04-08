@@ -56,6 +56,11 @@ export default function AdminScreen() {
   const [marketTeams, setMarketTeams]     = useState('');
   const [savingMarket, setSavingMarket]   = useState(false);
 
+  // Settle market form
+  const [settleMarketData, setSettleMarketData] = useState<SeasonMarket | null>(null);
+  const [selectedWinner, setSelectedWinner]     = useState<string | null>(null);
+  const [settlingMarket, setSettlingMarket]     = useState(false);
+
   useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
@@ -80,6 +85,9 @@ export default function AdminScreen() {
     }
     if (homeTeamId === awayTeamId) {
       Alert.alert('Villa', 'Heimalið og útlið mega ekki vera sama lið'); return;
+    }
+    if (kickoff < new Date()) {
+      Alert.alert('Villa', 'Upphafstími leiks má ekki vera í fortíðinni'); return;
     }
     setSavingMatch(true);
     const { error } = await supabase.from('matches').insert({
@@ -112,8 +120,11 @@ export default function AdminScreen() {
       return;
     }
 
-    const { data: betIds, error: betsError } = await supabase
-      .from('bets').select('id').eq('match_id', settleMatch.id).eq('status', 'accepted');
+    const { data: betsToSettle, error: betsError } = await supabase
+      .from('bets')
+      .select('id, challenger_id, opponent_id, challenger:profiles!challenger_id(username, full_name), opponent:profiles!opponent_id(username, full_name)')
+      .eq('match_id', settleMatch.id)
+      .eq('status', 'accepted');
 
     if (betsError) {
       setSettling(false);
@@ -121,12 +132,28 @@ export default function AdminScreen() {
       return;
     }
 
-    let settled = 0;
-    let failed = 0;
-    for (const b of betIds ?? []) {
-      const { error: rpcError } = await supabase.rpc('settle_bet', { p_bet_id: b.id, p_match_result: settleResult });
-      if (rpcError) failed++;
-      else settled++;
+    const betIds = (betsToSettle ?? []).map(b => b.id);
+    const matchName = `${settleMatch.home_team?.name ?? 'Heimalið'} vs ${settleMatch.away_team?.name ?? 'Útlið'}`;
+
+    // Settle all bets in parallel
+    const results = await Promise.all(
+      betIds.map(id => supabase.rpc('settle_bet', { p_bet_id: id, p_match_result: settleResult }))
+    );
+    const settled = results.filter(r => !r.error).length;
+    const failed  = results.filter(r =>  r.error).length;
+    const settledIds = betIds.filter((_, i) => !results[i].error);
+
+    // Fetch all updated bets in one query
+    if (settledIds.length > 0) {
+      const { data: updatedBets } = await supabase
+        .from('bets').select('id, winner_id, loser_id').in('id', settledIds);
+
+      const notifs: any[] = [];
+      for (const b of updatedBets ?? []) {
+        if (b.winner_id) notifs.push({ user_id: b.winner_id, type: 'bet_won', title: 'Þú vannst veðmálið! 🏆', body: `Leikurinn ${matchName} er búinn. Gangi þér vel!`, data: { bet_id: b.id } });
+        if (b.loser_id)  notifs.push({ user_id: b.loser_id,  type: 'bet_lost', title: 'Þú tapað veðmálinu 😅', body: `Leikurinn ${matchName} er búinn. Gangi þér betur næst!`, data: { bet_id: b.id } });
+      }
+      if (notifs.length > 0) await supabase.from('notifications').insert(notifs);
     }
 
     setSettling(false);
@@ -163,7 +190,83 @@ export default function AdminScreen() {
     Alert.alert('Læsa markað?', 'Engin ný veðmál verða tekin á móti eftir þetta.', [
       { text: 'Hætta við', style: 'cancel' },
       { text: 'Læsa', onPress: async () => {
-        await supabase.from('season_markets').update({ status: 'locked' }).eq('id', id);
+        const { error } = await supabase.from('season_markets').update({ status: 'locked' }).eq('id', id);
+        if (error) { Alert.alert('Villa', error.message); return; }
+        await fetchAll();
+      }},
+    ]);
+  }
+
+  async function confirmSettleMarket() {
+    if (!settleMarketData || !selectedWinner) return;
+    setSettlingMarket(true);
+
+    const mk = settleMarketData;
+
+    // Fetch all accepted season_bets for this market
+    const { data: bets, error: betsError } = await supabase
+      .from('season_bets')
+      .select('id, challenger_id, opponent_id, challenger_pick, opponent_pick')
+      .eq('market_id', mk.id)
+      .eq('status', 'accepted');
+
+    if (betsError) {
+      setSettlingMarket(false);
+      Alert.alert('Villa', betsError.message);
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    // Update each bet
+    const updates = (bets ?? []).map(b => {
+      const challengerWins = b.challenger_pick === selectedWinner;
+      const opponentWins   = b.opponent_pick   === selectedWinner;
+      return supabase.from('season_bets').update({
+        status:    'settled',
+        winner_id: challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null,
+        loser_id:  challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null,
+        settled_at: now,
+      }).eq('id', b.id);
+    });
+    await Promise.all(updates);
+
+    // Mark market settled
+    await supabase.from('season_markets').update({
+      status: 'settled',
+      winning_team_id: selectedWinner,
+      settled_at: now,
+    }).eq('id', mk.id);
+
+    // Send notifications
+    const notifs: any[] = [];
+    for (const b of bets ?? []) {
+      const challengerWins = b.challenger_pick === selectedWinner;
+      const opponentWins   = b.opponent_pick   === selectedWinner;
+      if (challengerWins) {
+        notifs.push({ user_id: b.challenger_id, type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+        notifs.push({ user_id: b.opponent_id,   type: 'bet_lost', title: 'Þú tapað tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+      } else if (opponentWins) {
+        notifs.push({ user_id: b.opponent_id,   type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+        notifs.push({ user_id: b.challenger_id, type: 'bet_lost', title: 'Þú tapað tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+      }
+    }
+    if (notifs.length > 0) await supabase.from('notifications').insert(notifs);
+
+    setSettlingMarket(false);
+    setSettleMarketData(null);
+    setSelectedWinner(null);
+    Alert.alert('Gert! ✅', `Markaðurinn „${mk.title}" gerður upp. ${(bets ?? []).length} veðmál uppgerð.`);
+    await fetchAll();
+  }
+
+  async function deleteMarket(id: string, title: string) {
+    Alert.alert(`Eyða „${title}"?`, 'Þetta eyðir markaðinum og öllum veðmálum á honum.', [
+      { text: 'Hætta við', style: 'cancel' },
+      { text: 'Eyða', style: 'destructive', onPress: async () => {
+        await supabase.from('season_bets').delete().eq('market_id', id);
+        const { error } = await supabase.from('season_markets').delete().eq('id', id);
+        if (error) { Alert.alert('Villa', error.message); return; }
         await fetchAll();
       }},
     ]);
@@ -271,6 +374,14 @@ export default function AdminScreen() {
                         <Text style={[s.marketBtnText, { color: '#FFC845' }]}>🔒 Læsa</Text>
                       </TouchableOpacity>
                     )}
+                    {mk.status === 'locked' && (
+                      <TouchableOpacity style={s.marketBtn} onPress={() => { setSettleMarketData(mk); setSelectedWinner(null); }}>
+                        <Text style={[s.marketBtnText, { color: '#21A56A' }]}>🏆 Gera upp</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={s.marketBtn} onPress={() => deleteMarket(mk.id, mk.title)}>
+                      <Text style={[s.marketBtnText, { color: '#ff4a6e' }]}>🗑 Eyða</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))}
@@ -368,6 +479,40 @@ export default function AdminScreen() {
             </View>
             <TouchableOpacity style={[s.saveBtn, settling && { opacity:0.6 }]} onPress={confirmSettle} disabled={settling}>
               {settling ? <ActivityIndicator color="#000" /> : <Text style={s.saveBtnText}>Gera upp og senda tilkynningar 🏆</Text>}
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── SETTLE MARKET MODAL ── */}
+      <Modal visible={!!settleMarketData} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSettleMarketData(null)}>
+        <SafeAreaView style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Gera upp markað</Text>
+            <TouchableOpacity onPress={() => setSettleMarketData(null)}><Text style={s.modalClose}>✕</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={s.modalBody}>
+            <Text style={s.settleMatchName}>{settleMarketData?.title}</Text>
+            <Text style={s.fieldLabel}>SIGURLIÐ / SIGURMAÐUR</Text>
+            <View style={s.optRow}>
+              {(settleMarketData?.available_teams ?? []).map(team => (
+                <TouchableOpacity
+                  key={team}
+                  style={[s.optChip, selectedWinner === team && s.optChipActive]}
+                  onPress={() => setSelectedWinner(team)}
+                >
+                  <Text style={[s.optChipText, selectedWinner === team && s.optChipTextActive]}>{team}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[s.saveBtn, (!selectedWinner || settlingMarket) && { opacity: 0.5 }]}
+              onPress={confirmSettleMarket}
+              disabled={!selectedWinner || settlingMarket}
+            >
+              {settlingMarket
+                ? <ActivityIndicator color="#000" />
+                : <Text style={s.saveBtnText}>Staðfesta og gera upp 🏆</Text>}
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
