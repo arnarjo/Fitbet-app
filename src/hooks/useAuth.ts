@@ -8,7 +8,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 
 // Web Client ID from Google Cloud Console → APIs & Services → Credentials
-const WEB_CLIENT_ID = 'YOUR_WEB_CLIENT_ID_HERE.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '229436001098-fpmuhlvah07eo6f6r339ft0r2of2kqqe.apps.googleusercontent.com';
 
 GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
 
