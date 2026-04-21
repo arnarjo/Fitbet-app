@@ -18,6 +18,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../lib/supabase';
 import type { Challenge } from '../types/database';
 import { EXERCISE_OPTIONS } from '../types/database';
@@ -45,12 +46,14 @@ export default function ProofUploadSheet({
   const [pickedAsset, setPickedAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [notes, setNotes] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (visible) {
       setUploadState('idle');
       setPickedAsset(null);
       setNotes('');
+      setErrorMsg('');
       Animated.parallel([
         Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 200 }),
         Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -85,7 +88,6 @@ export default function ProofUploadSheet({
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
-      allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {
       setPickedAsset(result.assets[0]);
@@ -100,7 +102,6 @@ export default function ProofUploadSheet({
         ? ImagePicker.MediaTypeOptions.Videos
         : ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
-      allowsEditing: type === 'photo',
       videoMaxDuration: 60,
     });
     if (!result.canceled && result.assets[0]) {
@@ -120,19 +121,21 @@ export default function ProofUploadSheet({
         setUploadProgress(p => Math.min(p + 12, 85));
       }, 200);
 
-      // Fetch asset as blob
-      const response = await fetch(pickedAsset.uri);
-      const blob = await response.blob();
-
       const isVideo = pickedAsset.type === 'video';
       const ext = isVideo ? 'mp4' : 'jpg';
       const fileName = `${currentUserId}/${challenge.id}_${Date.now()}.${ext}`;
       const contentType = isVideo ? 'video/mp4' : 'image/jpeg';
 
+      // Read file as base64 — works with both file:// and content:// URIs on Android
+      const base64 = await FileSystem.readAsStringAsync(pickedAsset.uri, {
+        encoding: 'base64' as any,
+      });
+      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('challenge-proofs')
-        .upload(fileName, blob, { contentType, upsert: false });
+        .upload(fileName, byteArray, { contentType, upsert: false });
 
       clearInterval(progressInterval);
 
@@ -172,7 +175,7 @@ export default function ProofUploadSheet({
         type: 'challenge_submitted',
         title: 'Sönnun móttekin! 📸',
         body: `${challenge.loser?.full_name ?? 'Vinur'} sendi sönnun fyrir áskorunina.`,
-        data: { challenge_id: challenge.id },
+        data: { type: 'challenge_submitted', challenge_id: challenge.id },
       });
 
       setUploadProgress(100);
@@ -183,9 +186,10 @@ export default function ProofUploadSheet({
         onClose();
       }, 1200);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
       setUploadState('error');
+      setErrorMsg(err?.message ?? 'Óþekkt villa');
     }
   }
 
@@ -393,7 +397,7 @@ export default function ProofUploadSheet({
           <View style={[s.body, s.centeredState]}>
             <Text style={{ fontSize: 44, marginBottom: 14 }}>❌</Text>
             <Text style={[s.uploadingTitle, { color: '#ff4a6e' }]}>Eitthvað fór úrskeiðis</Text>
-            <Text style={s.uploadingSub}>Athugaðu tengingu og reyndu aftur</Text>
+            <Text style={s.uploadingSub}>{errorMsg || 'Athugaðu tengingu og reyndu aftur'}</Text>
             <TouchableOpacity style={[s.submitBtn, { marginTop: 20, backgroundColor: '#ff4a6e' }]}
               onPress={() => setUploadState('idle')}>
               <Text style={s.submitBtnText}>Reyna aftur</Text>

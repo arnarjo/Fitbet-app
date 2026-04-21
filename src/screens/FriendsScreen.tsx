@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import type { Profile } from '../types/database';
 
 type FriendshipStatus = 'friends' | 'pending_sent' | 'pending_received' | 'none';
@@ -32,6 +33,7 @@ function avatarColor(id: string) {
 
 export default function FriendsScreen({ navigation }: { navigation: any }) {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const userId = profile?.id ?? '';
 
   const [search, setSearch]           = useState('');
@@ -104,6 +106,27 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
       }
     }
 
+    // Fetch H2H stats for each friend in parallel
+    if (friendList.length > 0) {
+      const h2hResults = await Promise.all(
+        friendList.map(async (f) => {
+          const friendId = f.profile.id;
+          const { data: h2h } = await supabase
+            .from('bets')
+            .select('winner_id')
+            .eq('status', 'settled')
+            .or(`and(challenger_id.eq.${userId},opponent_id.eq.${friendId}),and(challenger_id.eq.${friendId},opponent_id.eq.${userId})`);
+          const wins   = (h2h ?? []).filter(b => b.winner_id === userId).length;
+          const losses = (h2h ?? []).filter(b => b.winner_id === friendId).length;
+          return { id: friendId, wins, losses };
+        })
+      );
+      h2hResults.forEach(h => {
+        const entry = friendList.find(f => f.profile.id === h.id);
+        if (entry) { entry.wins = h.wins; entry.losses = h.losses; }
+      });
+    }
+
     setFriends(friendList);
     setRequests(requestList);
     setLoading(false);
@@ -132,12 +155,13 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
       status: 'pending',
     });
     if (!error) {
+      const senderName = profile?.full_name ?? profile?.username;
       await supabase.from('notifications').insert({
         user_id: toUserId,
         type: 'friend_request',
-        title: 'Vinarbeiðni! 👋',
-        body: `${profile?.full_name ?? profile?.username} vill bæta þér við sem vin.`,
-        data: { from_user_id: userId },
+        title: t('friends_request_notif'),
+        body: `${senderName} ${t('friends_request_notif_body')}`,
+        data: { type: 'friend_request', from_user_id: userId },
       });
       setSearch('');
       setSearchResults([]);
@@ -149,12 +173,13 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
   async function acceptRequest(friendshipId: string, fromUserId: string) {
     setActionLoading(friendshipId);
     await supabase.from('friendships').update({ status: 'accepted' }).eq('id', friendshipId);
+    const acceptorName = profile?.full_name ?? profile?.username;
     await supabase.from('notifications').insert({
       user_id: fromUserId,
       type: 'friend_accepted',
-      title: 'Vinarbeiðni samþykkt! 🤝',
-      body: `${profile?.full_name ?? profile?.username} er nú vinur þinn.`,
-      data: { user_id: userId },
+      title: t('friends_accepted_notif'),
+      body: `${acceptorName} ${t('friends_accepted_notif_body')}`,
+      data: { type: 'friend_accepted', user_id: userId },
     });
     await fetchFriends();
     setActionLoading(null);
@@ -168,10 +193,10 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
   }
 
   async function removeFriend(friendshipId: string, name: string) {
-    Alert.alert(`Fjarlægja ${name}?`, 'Þú getur alltaf bætt þeim við aftur seinna.', [
-      { text: 'Hætta við', style: 'cancel' },
+    Alert.alert(`${t('friends_remove')} ${name}?`, t('friends_remove_body'), [
+      { text: t('common_cancel'), style: 'cancel' },
       {
-        text: 'Fjarlægja', style: 'destructive',
+        text: t('friends_remove'), style: 'destructive',
         onPress: async () => {
           await supabase.from('friendships').delete().eq('id', friendshipId);
           await fetchFriends();
@@ -202,7 +227,7 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Text style={s.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Vinir</Text>
+        <Text style={s.headerTitle}>{t('friends_title')}</Text>
         {requests.length > 0 && (
           <View style={s.requestsBadge}>
             <Text style={s.requestsBadgeText}>{requests.length}</Text>
@@ -215,7 +240,7 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
         <Text style={s.searchIcon}>🔍</Text>
         <TextInput
           style={s.searchInput}
-          placeholder="Leita að notendum..."
+          placeholder={t('friends_search_ph')}
           placeholderTextColor="#2a4050"
           value={search}
           onChangeText={setSearch}
@@ -238,11 +263,11 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
         {/* ── Search results ── */}
         {search.length >= 2 && (
           <View style={s.section}>
-            <Text style={s.sectionLabel}>LEITARNIÐURSTÖÐUR</Text>
+            <Text style={s.sectionLabel}>{t('friends_results').toUpperCase()}</Text>
             {searching ? (
               <ActivityIndicator color="#21A56A" style={{ marginTop: 16 }} />
             ) : searchResults.length === 0 ? (
-              <Text style={s.emptyText}>Enginn notandi fannst fyrir „{search}"</Text>
+              <Text style={s.emptyText}>{t('friends_no_results')} „{search}"</Text>
             ) : (
               <View style={s.listCard}>
                 {searchResults.map(p => {
@@ -267,18 +292,18 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
                         >
                           {actionLoading === p.id
                             ? <ActivityIndicator color="#000" size="small" />
-                            : <Text style={s.addBtnText}>+ Bæta við</Text>
+                            : <Text style={s.addBtnText}>+ {t('friends_add')}</Text>
                           }
                         </TouchableOpacity>
                       )}
                       {st === 'friends' && (
-                        <View style={s.friendsBadge}><Text style={s.friendsBadgeText}>Vinur ✓</Text></View>
+                        <View style={s.friendsBadge}><Text style={s.friendsBadgeText}>{t('friends_badge_friend')}</Text></View>
                       )}
                       {st === 'pending_sent' && (
-                        <View style={s.pendingBadge}><Text style={s.pendingBadgeText}>Sent</Text></View>
+                        <View style={s.pendingBadge}><Text style={s.pendingBadgeText}>{t('friends_badge_sent')}</Text></View>
                       )}
                       {st === 'pending_received' && (
-                        <View style={s.pendingBadge}><Text style={s.pendingBadgeText}>Beiðni móttekin</Text></View>
+                        <View style={s.pendingBadge}><Text style={s.pendingBadgeText}>{t('friends_badge_received')}</Text></View>
                       )}
                     </View>
                   );
@@ -291,7 +316,7 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
         {/* ── Friend requests ── */}
         {requests.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionLabel}>VINARBEIÐNIR ({requests.length})</Text>
+            <Text style={s.sectionLabel}>{t('friends_requests').toUpperCase()} ({requests.length})</Text>
             <View style={s.listCard}>
               {requests.map(entry => {
                 const color = avatarColor(entry.profile.id);
@@ -322,7 +347,7 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
                       >
                         {isLoading
                           ? <ActivityIndicator color="#000" size="small" />
-                          : <Text style={s.acceptBtnText}>✓ Samþykkja</Text>
+                          : <Text style={s.acceptBtnText}>✓ {t('friends_accept')}</Text>
                         }
                       </TouchableOpacity>
                     </View>
@@ -335,15 +360,15 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
 
         {/* ── Friends list ── */}
         <View style={s.section}>
-          <Text style={s.sectionLabel}>VINIR ({friends.filter(f => f.status === 'friends').length})</Text>
+          <Text style={s.sectionLabel}>{t('friends_title').toUpperCase()} ({friends.filter(f => f.status === 'friends').length})</Text>
           {loading ? (
             <ActivityIndicator color="#21A56A" style={{ marginTop: 20 }} />
           ) : friends.filter(f => f.status === 'friends').length === 0 &&
               friends.filter(f => f.status === 'pending_sent').length === 0 ? (
             <View style={s.emptyState}>
               <Text style={s.emptyIcon}>👥</Text>
-              <Text style={s.emptyTitle}>Engir vinir ennþá</Text>
-              <Text style={s.emptySub}>Leitaðu að vinum hér að ofan og bættu þeim við</Text>
+              <Text style={s.emptyTitle}>{t('friends_no_friends')}</Text>
+              <Text style={s.emptySub}>{t('friends_no_friends_sub')}</Text>
             </View>
           ) : (
             <View style={s.listCard}>
@@ -358,9 +383,15 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
                     </View>
                     <View style={s.rowInfo}>
                       <Text style={s.rowName}>{entry.profile.full_name ?? entry.profile.username}</Text>
-                      <Text style={s.rowHandle}>
-                        @{entry.profile.username} · {entry.profile.total_points ?? 0} stig
-                      </Text>
+                      <Text style={s.rowHandle}>@{entry.profile.username}</Text>
+                      {(entry.wins ?? 0) + (entry.losses ?? 0) > 0 && (
+                        <View style={s.h2hRow}>
+                          <Text style={[s.h2hNum, { color: '#21A56A' }]}>{entry.wins}</Text>
+                          <Text style={s.h2hSep}>–</Text>
+                          <Text style={[s.h2hNum, { color: '#ff4a6e' }]}>{entry.losses}</Text>
+                          <Text style={s.h2hLabel}> H2H</Text>
+                        </View>
+                      )}
                     </View>
                     <TouchableOpacity
                       style={s.removeBtn}
@@ -390,7 +421,7 @@ export default function FriendsScreen({ navigation }: { navigation: any }) {
                       <Text style={s.rowHandle}>@{entry.profile.username}</Text>
                     </View>
                     <View style={s.pendingBadge}>
-                      <Text style={s.pendingBadgeText}>Bíður svars</Text>
+                      <Text style={s.pendingBadgeText}>{t('friends_badge_awaiting')}</Text>
                     </View>
                   </View>
                 );
@@ -453,7 +484,11 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 13, fontWeight: '800' },
   rowInfo: { flex: 1 },
   rowName: { fontSize: 14, fontWeight: '700', color: '#eef4f8' },
-  rowHandle: { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  rowHandle:  { fontSize: 11, color: '#4a6878', marginTop: 2 },
+  h2hRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  h2hNum:    { fontSize: 13, fontWeight: '800' },
+  h2hSep:    { fontSize: 13, color: '#4a6878', marginHorizontal: 3 },
+  h2hLabel:  { fontSize: 11, color: '#4a6878' },
   addBtn: {
     backgroundColor: '#21A56A', paddingHorizontal: 12, paddingVertical: 7,
     borderRadius: 20, minWidth: 80, alignItems: 'center',

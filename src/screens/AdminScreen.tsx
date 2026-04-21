@@ -26,6 +26,14 @@ const MARKET_TYPES = [
 export default function AdminScreen() {
   const { profile } = useAuth();
   const [tab, setTab]         = useState<Tab>('matches');
+
+  if (!profile?.is_admin) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#071D2A', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#ff4a6e', fontSize: 16, fontWeight: '700' }}>⛔ Aðgangur bannaður</Text>
+      </SafeAreaView>
+    );
+  }
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams]     = useState<Team[]>([]);
   const [markets, setMarkets] = useState<SeasonMarket[]>([]);
@@ -150,8 +158,8 @@ export default function AdminScreen() {
 
       const notifs: any[] = [];
       for (const b of updatedBets ?? []) {
-        if (b.winner_id) notifs.push({ user_id: b.winner_id, type: 'bet_won', title: 'Þú vannst veðmálið! 🏆', body: `Leikurinn ${matchName} er búinn. Gangi þér vel!`, data: { bet_id: b.id } });
-        if (b.loser_id)  notifs.push({ user_id: b.loser_id,  type: 'bet_lost', title: 'Þú tapað veðmálinu 😅', body: `Leikurinn ${matchName} er búinn. Gangi þér betur næst!`, data: { bet_id: b.id } });
+        if (b.winner_id) notifs.push({ user_id: b.winner_id, type: 'bet_won', title: 'Þú vannst veðmálið! 🏆', body: `Leikurinn ${matchName} er búinn. Gangi þér vel!`, data: { type: 'bet_won', bet_id: b.id } });
+        if (b.loser_id)  notifs.push({ user_id: b.loser_id,  type: 'bet_lost', title: 'Þú tapað veðmálinu 😅', body: `Leikurinn ${matchName} er búinn. Gangi þér betur næst!`, data: { type: 'bet_lost', bet_id: b.id } });
       }
       if (notifs.length > 0) await supabase.from('notifications').insert(notifs);
     }
@@ -203,6 +211,11 @@ export default function AdminScreen() {
 
     const mk = settleMarketData;
 
+    // Look up the winning team's UUID from the name (available_teams stores names,
+    // but challenger_pick/opponent_pick store team UUIDs)
+    const winningTeam   = teams.find(t => t.name === selectedWinner);
+    const winningTeamId = winningTeam?.id ?? null;
+
     // Fetch all accepted season_bets for this market
     const { data: bets, error: betsError } = await supabase
       .from('season_bets')
@@ -218,10 +231,10 @@ export default function AdminScreen() {
 
     const now = new Date().toISOString();
 
-    // Update each bet
+    // Settle each bet — compare by team UUID
     const updates = (bets ?? []).map(b => {
-      const challengerWins = b.challenger_pick === selectedWinner;
-      const opponentWins   = b.opponent_pick   === selectedWinner;
+      const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
+      const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
       return supabase.from('season_bets').update({
         status:    'settled',
         winner_id: challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null,
@@ -231,27 +244,50 @@ export default function AdminScreen() {
     });
     await Promise.all(updates);
 
-    // Mark market settled
+    // Mark market settled (store team UUID in winning_team_id)
     await supabase.from('season_markets').update({
       status: 'settled',
-      winning_team_id: selectedWinner,
+      winning_team_id: winningTeamId,
       settled_at: now,
     }).eq('id', mk.id);
+
+    // Update profile stats for winners and losers
+    const profileUpdates: Promise<any>[] = [];
+    for (const b of bets ?? []) {
+      const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
+      const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
+      const winnerId = challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null;
+      const loserId  = challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null;
+      if (winnerId) profileUpdates.push(supabase.rpc('increment_wins', { p_user_id: winnerId }));
+      if (loserId)  profileUpdates.push(supabase.rpc('increment_losses', { p_user_id: loserId }));
+    }
+    await Promise.all(profileUpdates);
 
     // Send notifications
     const notifs: any[] = [];
     for (const b of bets ?? []) {
-      const challengerWins = b.challenger_pick === selectedWinner;
-      const opponentWins   = b.opponent_pick   === selectedWinner;
+      const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
+      const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
       if (challengerWins) {
-        notifs.push({ user_id: b.challenger_id, type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
-        notifs.push({ user_id: b.opponent_id,   type: 'bet_lost', title: 'Þú tapað tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+        notifs.push({ user_id: b.challenger_id, type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { type: 'bet_won',  market_id: mk.id } });
+        notifs.push({ user_id: b.opponent_id,   type: 'bet_lost', title: 'Þú tapðir tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { type: 'bet_lost', market_id: mk.id } });
       } else if (opponentWins) {
-        notifs.push({ user_id: b.opponent_id,   type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
-        notifs.push({ user_id: b.challenger_id, type: 'bet_lost', title: 'Þú tapað tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { market_id: mk.id } });
+        notifs.push({ user_id: b.opponent_id,   type: 'bet_won',  title: 'Þú vannst tímabilsveðmálið! 🏆', body: `${selectedWinner} vann. ${mk.title}`, data: { type: 'bet_won',  market_id: mk.id } });
+        notifs.push({ user_id: b.challenger_id, type: 'bet_lost', title: 'Þú tapðir tímabilsveðmálinu 😅',  body: `${selectedWinner} vann. ${mk.title}`, data: { type: 'bet_lost', market_id: mk.id } });
       }
     }
     if (notifs.length > 0) await supabase.from('notifications').insert(notifs);
+
+    // Award season_bet_win achievement to winners
+    const winnerIds = (bets ?? [])
+      .map(b => {
+        const cw = winningTeamId ? b.challenger_pick === winningTeamId : false;
+        const ow = winningTeamId ? b.opponent_pick   === winningTeamId : false;
+        return cw ? b.challenger_id : ow ? b.opponent_id : null;
+      })
+      .filter(Boolean) as string[];
+    const uniqueWinners = [...new Set(winnerIds)];
+    await Promise.all(uniqueWinners.map(id => supabase.rpc('award_achievement', { p_user_id: id, p_type: 'season_bet_win' })));
 
     setSettlingMarket(false);
     setSettleMarketData(null);

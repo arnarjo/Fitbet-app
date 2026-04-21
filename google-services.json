@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "295669598925",
+    "project_id": "fitbet-3f3ab",
+    "storage_bucket": "fitbet-3f3ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:295669598925:android:c351679b07caa3cdf43784",
+        "android_client_info": {
+          "package_name": "is.fitbet.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaSJ8OEMfy8OYagyoaMgK9M246N0wIgDI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
