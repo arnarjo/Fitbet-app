@@ -9,11 +9,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { supabase } from '../../lib/supabase';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook } = useAuth();
   const { t, lang, setLang } = useLanguage();
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -50,6 +51,32 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
+  async function handleFacebookLogin() {
+    setLoading(true);
+    const { error } = await signInWithFacebook();
+    setLoading(false);
+    if (error) {
+      Alert.alert('Villa', 'Innskráning með Facebook mistókst, reyndu aftur.');
+    }
+  }
+
+  async function handleForgotPassword() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setErrors({ email: t('login_err_email_req') });
+      shake();
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed);
+    setLoading(false);
+    if (error) {
+      Alert.alert(t('common_error'), error.message);
+    } else {
+      Alert.alert(t('login_forgot_title'), t('login_forgot_msg'));
+    }
+  }
+
   async function handleLogin() {
     if (!validate()) return;
     setLoading(true);
@@ -72,7 +99,7 @@ export default function LoginScreen({ navigation }: Props) {
               <Text style={s.backText}>{t('common_back')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.langToggle} onPress={() => setLang(lang === 'en' ? 'is' : 'en')}>
-              <Text style={s.langText}>{lang === 'en' ? '🇮🇸 IS' : '🇬🇧 EN'}</Text>
+              <Text style={s.langText}>{lang === 'is' ? '🇮🇸 IS' : '🇬🇧 EN'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -123,7 +150,7 @@ export default function LoginScreen({ navigation }: Props) {
               {errors.password && <Text style={s.errorText}>{errors.password}</Text>}
             </View>
 
-            <TouchableOpacity style={s.forgotBtn} onPress={() => Alert.alert(t('login_forgot_title'), t('login_forgot_msg'))}>
+            <TouchableOpacity style={s.forgotBtn} onPress={handleForgotPassword}>
               <Text style={s.forgotText}>{t('login_forgot')}</Text>
             </TouchableOpacity>
 
@@ -146,6 +173,16 @@ export default function LoginScreen({ navigation }: Props) {
           >
             <Text style={s.googleIcon}>G</Text>
             <Text style={s.googleBtnText}>Halda áfram með Google</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.facebookBtn}
+            onPress={handleFacebookLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={s.facebookIcon}>f</Text>
+            <Text style={s.facebookBtnText}>Halda áfram með Facebook</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.signupBtn} onPress={() => navigation.navigate('Signup')}>
@@ -200,7 +237,10 @@ const s = StyleSheet.create({
   signupBtnText: { color: '#eef4f8', fontSize: 15, fontWeight: '700' },
   termsText:   { fontSize: 12, color: '#2a4050', textAlign: 'center', lineHeight: 18 },
   termsLink:   { color: '#4a6878', textDecorationLine: 'underline' },
-  googleBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingVertical: 15, marginBottom: 12, backgroundColor: '#fff' },
-  googleIcon:  { fontSize: 18, fontWeight: '800', color: '#4285F4' },
+  googleBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingVertical: 15, marginBottom: 12, backgroundColor: '#fff' },
+  googleIcon:    { fontSize: 18, fontWeight: '800', color: '#4285F4' },
   googleBtnText: { color: '#111', fontSize: 15, fontWeight: '700' },
+  facebookBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, paddingVertical: 15, marginBottom: 12, backgroundColor: '#1877F2' },
+  facebookIcon:    { fontSize: 20, fontWeight: '900', color: '#fff' },
+  facebookBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
