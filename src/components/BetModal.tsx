@@ -15,7 +15,7 @@ import {
   Share,
 } from 'react-native';
 import type { Match, MatchResult, Exercise, Profile } from '../types/database';
-import { EXERCISE_OPTIONS, PREMIUM_EXERCISES } from '../types/database';
+import { EXERCISE_OPTIONS, PREMIUM_EXERCISES, AVAILABLE_EXERCISES } from '../types/database';
 import { supabase } from '../lib/supabase';
 import { LEAGUE_COLOR } from '../constants/leagues';
 import { useLanguage } from '../hooks/useLanguage';
@@ -480,7 +480,8 @@ export default function BetModal({
 
               <Text style={s.sectionLabel}>{t('bet_modal_ex_type')}</Text>
               <View style={s.exerciseGrid}>
-                {(Object.entries(EXERCISE_OPTIONS) as [Exercise, typeof EXERCISE_OPTIONS[Exercise]][]).map(([key, opt]) => {
+                {AVAILABLE_EXERCISES.map((key) => {
+                  const opt = EXERCISE_OPTIONS[key];
                   const isSel    = exercise === key;
                   const isPrem   = PREMIUM_EXERCISES.includes(key);
                   const isLocked = isPrem && !canUseCustomChallenges();
