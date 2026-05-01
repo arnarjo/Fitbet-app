@@ -11,15 +11,20 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  TextInput,
+  Share,
 } from 'react-native';
 import type { Match, MatchResult, Exercise, Profile } from '../types/database';
-import { EXERCISE_OPTIONS } from '../types/database';
+import { EXERCISE_OPTIONS, PREMIUM_EXERCISES } from '../types/database';
 import { supabase } from '../lib/supabase';
+import { LEAGUE_COLOR } from '../constants/leagues';
+import { useLanguage } from '../hooks/useLanguage';
+import { usePremium } from '../hooks/usePremium';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const SHEET_H = SCREEN_H * 0.88;
 
-type Step = 'prediction' | 'opponent' | 'challenge' | 'confirm';
+type Step = 'prediction' | 'opponent' | 'challenge' | 'confirm' | 'success';
 
 type Props = {
   visible: boolean;
@@ -27,6 +32,7 @@ type Props = {
   initialPrediction?: MatchResult | null;
   currentUserId: string;
   onClose: () => void;
+  onPremiumRequired?: () => void;
   onSubmit: (
     matchId: string,
     opponentId: string,
@@ -34,19 +40,10 @@ type Props = {
     exercise: Exercise,
     amount: number,
     unit: string,
-  ) => Promise<{ error: any }>;
+  ) => Promise<{ error: any; betId?: string }>;
 };
 
 const STEPS: Step[] = ['prediction', 'opponent', 'challenge', 'confirm'];
-const STEP_LABELS = ['Spá', 'Vinur', 'Æfing', 'Staðfesta'];
-
-const LEAGUE_COLORS: Record<string, string> = {
-  'Premier League': '#21A56A',
-  'UEFA Champions League': '#47C4EE',
-  'FIFA World Cup': '#FFC845',
-  'Besta deild karla': '#FFC845',
-  'Lengjudeild karla': '#ff9f40',
-};
 
 export default function BetModal({
   visible,
@@ -54,6 +51,7 @@ export default function BetModal({
   initialPrediction,
   currentUserId,
   onClose,
+  onPremiumRequired,
   onSubmit,
 }: Props) {
   const [step, setStep] = useState<Step>('prediction');
@@ -61,15 +59,26 @@ export default function BetModal({
   const [opponent, setOpponent] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [newBetId, setNewBetId]     = useState<string | null>(null);
+
+  const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+  const { t, lang } = useLanguage();
+  const { canUseCustomChallenges } = usePremium();
+
+  const STEP_LABELS = [t('bet_modal_your_pred'), t('bet_modal_opponent'), t('bet_modal_challenge_if'), t('common_confirm')];
 
   const slideAnim = useRef(new Animated.Value(SHEET_H)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
 
-  const accentColor = match ? (LEAGUE_COLORS[match.league_name] ?? '#21A56A') : '#21A56A';
+  const accentColor = match ? (LEAGUE_COLOR[match.league_name] ?? '#21A56A') : '#21A56A';
 
   useEffect(() => {
     if (visible) {
@@ -115,35 +124,57 @@ export default function BetModal({
     if (loadingFriends) return;
     setLoadingFriends(true);
 
-    const { data: friendships, error: fsError } = await supabase
+    // Get friend IDs to sort them to the top
+    const { data: friendships } = await supabase
       .from('friendships')
       .select('requester_id, addressee_id')
       .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
       .eq('status', 'accepted');
 
-    if (fsError || !friendships?.length) {
-      setFriends([]);
-      setLoadingFriends(false);
-      return;
-    }
-
-    const friendIds = friendships.map((f: any) =>
-      f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+    const friendIds = new Set(
+      (friendships ?? []).map((f: any) =>
+        f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+      )
     );
 
-    const { data, error } = await supabase
+    // Load all users (friends first, then others)
+    const { data } = await supabase
       .from('profiles')
       .select('*')
-      .in('id', friendIds)
-      .order('username', { ascending: true });
+      .neq('id', currentUserId)
+      .order('username', { ascending: true })
+      .limit(50);
 
-    if (error) {
-      setFriends([]);
-    } else {
-      setFriends((data as Profile[]) ?? []);
-    }
+    const all = (data ?? []) as Profile[];
+    // Sort: friends first
+    all.sort((a, b) => {
+      const aF = friendIds.has(a.id) ? 0 : 1;
+      const bF = friendIds.has(b.id) ? 0 : 1;
+      return aF - bF;
+    });
 
+    setFriends(all);
     setLoadingFriends(false);
+  }
+
+  function handleSearchChange(q: string) {
+    setUserSearch(q);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (!q.trim()) { setSearchResults([]); return; }
+    searchTimer.current = setTimeout(() => doSearch(q.trim()), 300);
+  }
+
+  async function doSearch(q: string) {
+    if (q.length < 2) return;
+    setSearching(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+      .neq('id', currentUserId)
+      .limit(8);
+    setSearchResults((data ?? []) as Profile[]);
+    setSearching(false);
   }
 
   const panResponder = useRef(
@@ -189,13 +220,13 @@ export default function BetModal({
 
     const selectedExercise = EXERCISE_OPTIONS[exercise];
     if (!selectedExercise) {
-      Alert.alert('Villa', 'Ógild æfing valin. Reyndu aftur.');
+      Alert.alert(t('common_error'), 'Invalid exercise. Try again.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const { error } = await onSubmit(
+      const { error, betId } = await onSubmit(
         match.id,
         opponent.id,
         prediction,
@@ -205,19 +236,35 @@ export default function BetModal({
       );
 
       if (error) {
-        Alert.alert('Villa', 'Ekki tókst að senda veðmál. Reyndu aftur.');
+        Alert.alert(t('bet_modal_err'), t('bet_modal_err_msg'));
       } else {
-        onClose();
-        setPrediction(null);
-        setOpponent(null);
-        setExercise(null);
-        setAmount(null);
+        setNewBetId(betId ?? null);
+        setStep('success');
       }
     } catch {
-      Alert.alert('Villa', 'Óvænt villa kom upp. Reyndu aftur.');
+      Alert.alert(t('bet_modal_err'), t('bet_modal_unexpected_err'));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function shareBet() {
+    if (!newBetId) return;
+    const inviteUrl = `${SUPABASE_URL}/functions/v1/bet-invite?id=${newBetId}`;
+    await Share.share({
+      message: `${opponent?.full_name ?? opponent?.username} — ég bauð þér veðmál á FitBet! 🎯\n${inviteUrl}`,
+      url: inviteUrl,
+    });
+  }
+
+  function closeSuccess() {
+    setStep('prediction');
+    setNewBetId(null);
+    setPrediction(null);
+    setOpponent(null);
+    setExercise(null);
+    setAmount(null);
+    onClose();
   }
 
   if (!match) return null;
@@ -312,21 +359,21 @@ export default function BetModal({
         >
           {step === 'prediction' && (
             <View>
-              <Text style={s.stepTitle}>Hvað heldur þú?</Text>
-              <Text style={s.stepSub}>Veldu spá þína fyrir leikinn</Text>
+              <Text style={s.stepTitle}>{t('bet_modal_pred_title')}</Text>
+              <Text style={s.stepSub}>{t('bet_modal_pred_sub')}</Text>
 
               <View style={s.matchPreview}>
                 <View style={s.previewTeam}>
                   <Text style={s.previewName}>{match.home_team?.name}</Text>
-                  <Text style={s.previewSub}>Heima</Text>
+                  <Text style={s.previewSub}>{t('bet_modal_home')}</Text>
                 </View>
                 <View style={s.previewMiddle}>
                   <Text style={s.previewVs}>VS</Text>
-                  <Text style={s.previewTime}>{formatKickoff(match.kickoff_time)}</Text>
+                  <Text style={s.previewTime}>{formatKickoff(match.kickoff_time, lang)}</Text>
                 </View>
                 <View style={[s.previewTeam, { alignItems: 'flex-end' }]}>
                   <Text style={s.previewName}>{match.away_team?.name}</Text>
-                  <Text style={s.previewSub}>Úti</Text>
+                  <Text style={s.previewSub}>{t('bet_modal_away')}</Text>
                 </View>
               </View>
 
@@ -335,10 +382,10 @@ export default function BetModal({
                   const isSel = prediction === pred;
                   const label =
                     pred === 'home'
-                      ? match.home_team?.name ?? 'Heimalið'
+                      ? match.home_team?.name ?? t('bet_modal_home_team')
                       : pred === 'away'
-                      ? match.away_team?.name ?? 'Útlið'
-                      : 'Jafntefli';
+                      ? match.away_team?.name ?? t('bet_modal_away_team')
+                      : t('matches_predict_draw');
 
                   return (
                     <TouchableOpacity
@@ -372,92 +419,95 @@ export default function BetModal({
 
           {step === 'opponent' && (
             <View>
-              <Text style={s.stepTitle}>Veldu vin</Text>
-              <Text style={s.stepSub}>Veldu við hvern þú vilt veðja</Text>
+              <Text style={s.stepTitle}>{t('bet_modal_opp_title')}</Text>
+              <Text style={s.stepSub}>{t('bet_modal_opp_sub')}</Text>
+
+              {/* Search box */}
+              <View style={[s.searchWrap, { borderColor: accentColor + '40' }]}>
+                <Text style={s.searchIcon}>🔍</Text>
+                <TextInput
+                  style={s.searchInput}
+                  placeholder={t('friends_search_ph')}
+                  placeholderTextColor="#2a4050"
+                  value={userSearch}
+                  onChangeText={handleSearchChange}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {userSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => { setUserSearch(''); setSearchResults([]); }}>
+                    <Text style={s.searchClear}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               {loadingFriends ? (
                 <ActivityIndicator color={accentColor} style={{ marginTop: 40 }} />
-              ) : friends.length === 0 ? (
-                <View style={s.emptyState}>
-                  <Text style={s.emptyIcon}>👥</Text>
-                  <Text style={s.emptyTitle}>Engir vinir fundust</Text>
-                  <Text style={s.emptySub}>
-                    Bættu við vinum í „Vinir" flipanum til að geta skorað á þá.
-                  </Text>
-                </View>
+              ) : userSearch.length >= 2 ? (
+                /* Search results */
+                searching ? (
+                  <ActivityIndicator color={accentColor} style={{ marginTop: 24 }} />
+                ) : searchResults.length === 0 ? (
+                  <Text style={s.emptyText}>{t('friends_no_results')} „{userSearch}"</Text>
+                ) : (
+                  searchResults.map((f) => {
+                    const isSel = opponent?.id === f.id;
+                    return <OpponentRow key={f.id} f={f} isSel={isSel} accentColor={accentColor} onPress={() => setOpponent(f)} />;
+                  })
+                )
               ) : (
-                friends.map((f) => {
-                  const isSel = opponent?.id === f.id;
-                  return (
-                    <TouchableOpacity
-                      key={f.id}
-                      style={[
-                        s.friendRow,
-                        isSel && {
-                          borderColor: accentColor,
-                          backgroundColor: accentColor + '0e',
-                        },
-                      ]}
-                      onPress={() => setOpponent(f)}
-                      activeOpacity={0.8}
-                    >
-                      <View
-                        style={[s.friendAvatar, { backgroundColor: accentColor + '20' }]}
-                      >
-                        <Text style={[s.friendInitials, { color: accentColor }]}>
-                          {getInitials(f.full_name ?? f.username)}
-                        </Text>
-                      </View>
-                      <View style={s.friendInfo}>
-                        <Text style={s.friendName}>{f.full_name ?? f.username}</Text>
-                        <Text style={s.friendHandle}>@{f.username}</Text>
-                      </View>
-                      {isSel && (
-                        <View
-                          style={[s.selectedBadge, { backgroundColor: accentColor }]}
-                        >
-                          <Text style={s.selectedBadgeText}>✓</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
+                /* Friends list */
+                friends.length === 0 ? (
+                  <View style={s.emptyState}>
+                    <Text style={s.emptyIcon}>👥</Text>
+                    <Text style={s.emptyTitle}>{t('bet_modal_no_friends')}</Text>
+                    <Text style={s.emptySub}>{t('bet_modal_no_friends_sub')}</Text>
+                  </View>
+                ) : (
+                  friends.map((f) => {
+                    const isSel = opponent?.id === f.id;
+                    return <OpponentRow key={f.id} f={f} isSel={isSel} accentColor={accentColor} onPress={() => setOpponent(f)} />;
+                  })
+                )
               )}
             </View>
           )}
 
           {step === 'challenge' && (
             <View>
-              <Text style={s.stepTitle}>Veldu æfingu</Text>
-              <Text style={s.stepSub}>Sá sem tapar þarf að klára þessa æfingu</Text>
+              <Text style={s.stepTitle}>{t('bet_modal_ex_title')}</Text>
+              <Text style={s.stepSub}>{t('bet_modal_ex_sub')}</Text>
 
-              <Text style={s.sectionLabel}>TEGUND ÆFINGAR</Text>
+              <Text style={s.sectionLabel}>{t('bet_modal_ex_type')}</Text>
               <View style={s.exerciseGrid}>
-                {(Object.entries(EXERCISE_OPTIONS) as [
-                  Exercise,
-                  typeof EXERCISE_OPTIONS[Exercise]
-                ][]).map(([key, opt]) => {
-                  const isSel = exercise === key;
+                {(Object.entries(EXERCISE_OPTIONS) as [Exercise, typeof EXERCISE_OPTIONS[Exercise]][]).map(([key, opt]) => {
+                  const isSel    = exercise === key;
+                  const isPrem   = PREMIUM_EXERCISES.includes(key);
+                  const isLocked = isPrem && !canUseCustomChallenges();
                   return (
                     <TouchableOpacity
                       key={key}
                       style={[
                         s.exCard,
-                        isSel && {
-                          borderColor: accentColor,
-                          backgroundColor: accentColor + '12',
-                        },
+                        isSel   && { borderColor: accentColor, backgroundColor: accentColor + '12' },
+                        isLocked && s.exCardLocked,
                       ]}
                       onPress={() => {
+                        if (isLocked) { onClose(); onPremiumRequired?.(); return; }
                         setExercise(key);
                         setAmount(null);
                       }}
                       activeOpacity={0.8}
                     >
-                      <Text style={s.exEmoji}>{getExerciseEmoji(key)}</Text>
-                      <Text style={[s.exLabel, isSel && { color: accentColor }]}>
+                      <Text style={[s.exEmoji, isLocked && { opacity: 0.45 }]}>{getExerciseEmoji(key)}</Text>
+                      <Text style={[s.exLabel, isSel && { color: accentColor }, isLocked && { opacity: 0.45 }]}>
                         {opt.label}
                       </Text>
+                      {isPrem && (
+                        <Text style={[s.exPremBadge, !isLocked && { color: '#f59e0b' }]}>
+                          ⭐
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -465,7 +515,7 @@ export default function BetModal({
 
               {exercise && (
                 <>
-                  <Text style={[s.sectionLabel, { marginTop: 20 }]}>MAGN</Text>
+                  <Text style={[s.sectionLabel, { marginTop: 20 }]}>{t('bet_modal_amount')}</Text>
                   <View style={s.amountRow}>
                     {EXERCISE_OPTIONS[exercise].amounts.map((a) => {
                       const isSel = amount === a;
@@ -504,12 +554,12 @@ export default function BetModal({
 
           {step === 'confirm' && prediction && opponent && exercise && amount && (
             <View>
-              <Text style={s.stepTitle}>Staðfesta</Text>
-              <Text style={s.stepSub}>Athugaðu vel áður en þú sendir</Text>
+              <Text style={s.stepTitle}>{t('common_confirm')}</Text>
+              <Text style={s.stepSub}>{t('bet_modal_confirm_sub')}</Text>
 
               <View style={s.confirmCard}>
                 <View style={s.confirmRow}>
-                  <Text style={s.confirmKey}>⚽ Leikur</Text>
+                  <Text style={s.confirmKey}>{t('bet_modal_row_match')}</Text>
                   <Text style={s.confirmVal}>
                     {match.home_team?.short_name} vs {match.away_team?.short_name}
                   </Text>
@@ -517,19 +567,19 @@ export default function BetModal({
                 <View style={s.confirmDivider} />
 
                 <View style={s.confirmRow}>
-                  <Text style={s.confirmKey}>🎯 Spá þín</Text>
+                  <Text style={s.confirmKey}>{t('bet_modal_row_pred')}</Text>
                   <Text style={[s.confirmVal, { color: accentColor }]}>
                     {prediction === 'home'
                       ? match.home_team?.name
                       : prediction === 'away'
                       ? match.away_team?.name
-                      : 'Jafntefli'}
+                      : t('matches_predict_draw')}
                   </Text>
                 </View>
                 <View style={s.confirmDivider} />
 
                 <View style={s.confirmRow}>
-                  <Text style={s.confirmKey}>👤 Gegn</Text>
+                  <Text style={s.confirmKey}>{t('bet_modal_row_against')}</Text>
                   <Text style={s.confirmVal}>
                     {opponent.full_name ?? opponent.username}
                   </Text>
@@ -537,7 +587,7 @@ export default function BetModal({
                 <View style={s.confirmDivider} />
 
                 <View style={s.confirmRow}>
-                  <Text style={s.confirmKey}>💪 Æfing ef tap</Text>
+                  <Text style={s.confirmKey}>{t('bet_modal_row_exercise')}</Text>
                   <Text style={[s.confirmVal, { color: '#ff4a6e' }]}>
                     {amount} {EXERCISE_OPTIONS[exercise].unit}{' '}
                     {EXERCISE_OPTIONS[exercise].label}
@@ -547,40 +597,87 @@ export default function BetModal({
 
               <View style={s.confirmNote}>
                 <Text style={s.confirmNoteText}>
-                  Ef þú tapar þarftu að klára {amount}{' '}
+                  {t('bet_modal_note_prefix')} {amount}{' '}
                   {EXERCISE_OPTIONS[exercise].unit}{' '}
-                  {EXERCISE_OPTIONS[exercise].label.toLowerCase()} og senda sönnun til{' '}
+                  {EXERCISE_OPTIONS[exercise].label.toLowerCase()}{' '}
+                  {t('bet_modal_note_suffix')}{' '}
                   {opponent.full_name ?? opponent.username}.
                 </Text>
               </View>
             </View>
           )}
 
+          {step === 'success' && opponent && exercise && amount && (
+            <View style={s.successWrap}>
+              <Text style={s.successEmoji}>🎯</Text>
+              <Text style={s.successTitle}>Veðmál sent!</Text>
+              <Text style={s.successSub}>
+                {opponent.full_name ?? opponent.username} fær tilkynningu og getur samþykkt eða hafnað.
+              </Text>
+
+              <TouchableOpacity style={s.shareBtn} onPress={shareBet} activeOpacity={0.8}>
+                <Text style={s.shareBtnText}>📤  Deila veðmálsboði</Text>
+              </TouchableOpacity>
+              <Text style={s.shareHint}>Sendu hlekk til vinar sem er ekki á FitBet</Text>
+
+              <TouchableOpacity style={s.closeSuccessBtn} onPress={closeSuccess} activeOpacity={0.7}>
+                <Text style={s.closeSuccessText}>Loka</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        <View style={s.bottomBar}>
-          <TouchableOpacity
-            style={[
-              s.ctaBtn,
-              { backgroundColor: accentColor },
-              !canProceed() && s.ctaDisabled,
-            ]}
-            onPress={step === 'confirm' ? handleSubmit : goNext}
-            disabled={!canProceed() || submitting}
-            activeOpacity={0.85}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={s.ctaText}>
-                {step === 'confirm' ? 'Senda veðmál 🏆' : 'Áfram →'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        {step !== 'success' && (
+          <View style={s.bottomBar}>
+            <TouchableOpacity
+              style={[
+                s.ctaBtn,
+                { backgroundColor: accentColor },
+                !canProceed() && s.ctaDisabled,
+              ]}
+              onPress={step === 'confirm' ? handleSubmit : goNext}
+              disabled={!canProceed() || submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={s.ctaText}>
+                  {step === 'confirm' ? t('bet_modal_send') : t('onb_next')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </Animated.View>
     </Modal>
+  );
+}
+
+function OpponentRow({ f, isSel, accentColor, onPress }: { f: Profile; isSel: boolean; accentColor: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={[s.friendRow, isSel && { borderColor: accentColor, backgroundColor: accentColor + '0e' }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={[s.friendAvatar, { backgroundColor: accentColor + '20' }]}>
+        <Text style={[s.friendInitials, { color: accentColor }]}>
+          {getInitials(f.full_name ?? f.username)}
+        </Text>
+      </View>
+      <View style={s.friendInfo}>
+        <Text style={s.friendName}>{f.full_name ?? f.username}</Text>
+        <Text style={s.friendHandle}>@{f.username}</Text>
+      </View>
+      {isSel && (
+        <View style={[s.selectedBadge, { backgroundColor: accentColor }]}>
+          <Text style={s.selectedBadgeText}>✓</Text>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -595,28 +692,41 @@ function getInitials(name: string): string {
 
 function getExerciseEmoji(ex: Exercise): string {
   const map: Record<Exercise, string> = {
-    hlaup: '🏃',
-    armbeygjur: '💪',
-    hnébeygjur: '🦵',
-    burpees: '🔥',
-    hjólreiðar: '🚴',
-    planki: '🧱',
+    hlaup:             '🏃',
+    armbeygjur:        '💪',
+    hnébeygjur:        '🦵',
+    burpees:           '🔥',
+    hjólreiðar:        '🚴',
+    planki:            '🧱',
+    sund:              '🏊',
+    pullups:           '🏋️',
+    hiit:              '⚡',
+    interval_run:      '🏃',
+    jump_rope:         '🪢',
+    box_jumps:         '🦘',
+    stairmaster:       '🪜',
+    rowing:            '🚣',
+    gongutur:          '🚶',
+    situps:            '🪑',
+    dips:              '💺',
+    mountain_climbers: '🧗',
   };
-  return map[ex];
+  return map[ex] ?? '💪';
 }
 
-function formatKickoff(iso: string): string {
+function formatKickoff(iso: string, lang: 'en' | 'is'): string {
+  const locale = lang === 'is' ? 'is-IS' : 'en-GB';
   const d = new Date(iso);
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
   const tomorrow = new Date(now);
   tomorrow.setDate(now.getDate() + 1);
   const isTomorrow = d.toDateString() === tomorrow.toDateString();
-  const time = d.toLocaleTimeString('is-IS', { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return `Í dag · ${time}`;
-  if (isTomorrow) return `Á morgun · ${time}`;
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `${lang === 'is' ? 'Í dag' : 'Today'} · ${time}`;
+  if (isTomorrow) return `${lang === 'is' ? 'Á morgun' : 'Tomorrow'} · ${time}`;
   return (
-    d.toLocaleDateString('is-IS', {
+    d.toLocaleDateString(locale, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -805,12 +915,20 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  exCardLocked: {
+    borderColor: 'rgba(245,158,11,0.2)',
+    backgroundColor: 'rgba(245,158,11,0.04)',
+  },
   exEmoji: { fontSize: 22 },
   exLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: '#7a9aaa',
     textAlign: 'center',
+  },
+  exPremBadge: {
+    fontSize: 10,
+    color: 'rgba(245,158,11,0.6)',
   },
 
   amountRow: { flexDirection: 'row', gap: 10 },
@@ -876,4 +994,28 @@ const s = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.4 },
   ctaText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#0d2030', borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 10,
+    marginBottom: 12,
+  },
+  searchIcon: { fontSize: 14 },
+  searchInput: { flex: 1, color: '#eef4f8', fontSize: 14 },
+  searchClear: { fontSize: 13, color: '#4a6878', padding: 2 },
+  emptyText: { fontSize: 13, color: '#4a6878', textAlign: 'center', paddingVertical: 20 },
+
+  successWrap: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 24 },
+  successEmoji: { fontSize: 64, marginBottom: 16 },
+  successTitle: { fontSize: 28, fontWeight: '800', color: '#21A56A', marginBottom: 10 },
+  successSub:   { fontSize: 15, color: '#8aabb8', textAlign: 'center', lineHeight: 22, marginBottom: 36 },
+  shareBtn: {
+    backgroundColor: '#21A56A', borderRadius: 14, paddingVertical: 16,
+    paddingHorizontal: 28, width: '100%', alignItems: 'center', marginBottom: 10,
+  },
+  shareBtnText:     { fontSize: 16, fontWeight: '800', color: '#000' },
+  shareHint:        { fontSize: 12, color: '#4a6878', marginBottom: 32 },
+  closeSuccessBtn:  { paddingVertical: 14, paddingHorizontal: 28 },
+  closeSuccessText: { fontSize: 15, color: '#4a6878' },
 });

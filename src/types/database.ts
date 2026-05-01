@@ -1,7 +1,25 @@
 // src/types/database.ts
 // Auto-generate updated types with: npx supabase gen types typescript --project-id YOUR_PROJECT_ID
 
-export type Exercise = 'hlaup' | 'armbeygjur' | 'hnébeygjur' | 'burpees' | 'hjólreiðar' | 'planki';
+export type Exercise =
+  | 'hlaup' | 'armbeygjur' | 'hnébeygjur' | 'burpees' | 'hjólreiðar' | 'planki'
+  | 'sund' | 'pullups' | 'hiit' | 'interval_run'
+  | 'jump_rope' | 'box_jumps' | 'stairmaster' | 'rowing'
+  // Legacy: kept for historical challenge data, not available for new bets
+  | 'gongutur' | 'situps' | 'dips' | 'mountain_climbers';
+
+export const PREMIUM_EXERCISES: Exercise[] = [
+  'sund', 'pullups', 'hiit', 'interval_run',
+  'jump_rope', 'box_jumps', 'stairmaster', 'rowing',
+];
+
+// Exercises available for new bets (excludes legacy removed exercises)
+export const AVAILABLE_EXERCISES: Exercise[] = [
+  'hlaup', 'armbeygjur', 'hnébeygjur', 'burpees', 'hjólreiðar', 'planki',
+  'sund', 'pullups', 'hiit', 'interval_run',
+  'jump_rope', 'box_jumps', 'stairmaster', 'rowing',
+];
+
 export type BetStatus = 'pending' | 'accepted' | 'declined' | 'settled' | 'cancelled';
 export type MatchResult = 'home' | 'draw' | 'away';
 export type MarketType = 'meistari' | 'fellur' | 'fer_upp' | 'yfir_neðar';
@@ -21,9 +39,12 @@ export interface Profile {
   city: string | null;
   strava_connected: boolean;
   is_admin: boolean;
+  is_premium: boolean;
+  premium_expires_at: string | null;
   total_points: number;
   total_wins: number;
   total_losses: number;
+  win_streak: number;
   created_at: string;
 }
 
@@ -130,6 +151,12 @@ export interface Challenge {
   loser?: Profile;
   winner?: Profile;
   proofs?: ChallengeProof[];
+  bet?: {
+    match?: {
+      home_team: { name: string } | null;
+      away_team: { name: string } | null;
+    } | null;
+  } | null;
 }
 
 export interface ChallengeProof {
@@ -194,26 +221,53 @@ export interface LeaderboardEntry {
 
 // Helper: label mappings for Icelandic UI
 export const EXERCISE_LABELS: Record<Exercise, string> = {
-  hlaup: '🏃 Hlaup',
-  armbeygjur: '💪 Armbeygjur',
-  hnébeygjur: '🦵 Hnébeygjur',
-  burpees: '🔥 Burpees',
-  hjólreiðar: '🚴 Hjólreiðar',
-  planki: '🧱 Planki',
+  hlaup:             '🏃 Hlaup',
+  armbeygjur:        '💪 Armbeygjur',
+  hnébeygjur:        '🦵 Hnébeygjur',
+  burpees:           '🔥 Burpees',
+  hjólreiðar:        '🚴 Hjólreiðar',
+  planki:            '🧱 Planki',
+  sund:              '🏊 Sund',
+  pullups:           '🏋️ Pull-ups',
+  hiit:              '⚡ HIIT',
+  interval_run:      '🏃 Interval run',
+  jump_rope:         '🪢 Jump rope',
+  box_jumps:         '🦘 Box jumps',
+  stairmaster:       '🪜 Stairmaster',
+  rowing:            '🚣 Rowing',
+  // Legacy
+  gongutur:          '🚶 Göngutúr',
+  situps:            '🪑 Sit-ups',
+  dips:              '💺 Dips',
+  mountain_climbers: '🧗 Mountain Climbers',
 };
 
 export const EXERCISE_OPTIONS: Record<Exercise, { label: string; amounts: number[]; unit: string }> = {
-  hlaup:      { label: 'Hlaup',      amounts: [3, 5, 10],        unit: 'km' },
-  armbeygjur: { label: 'Armbeygjur', amounts: [25, 50, 100],     unit: 'stk' },
-  hnébeygjur: { label: 'Hnébeygjur', amounts: [50, 100, 200],    unit: 'stk' },
-  burpees:    { label: 'Burpees',    amounts: [10, 25, 50],       unit: 'stk' },
-  hjólreiðar: { label: 'Hjólreiðar', amounts: [10, 20, 50],      unit: 'km' },
-  planki:     { label: 'Planki',     amounts: [1, 3, 5],          unit: 'mín' },
+  hlaup:             { label: 'Hlaup',           amounts: [3, 5, 10],          unit: 'km'  },
+  armbeygjur:        { label: 'Armbeygjur',      amounts: [25, 50, 100],       unit: 'stk' },
+  hnébeygjur:        { label: 'Hnébeygjur',      amounts: [50, 100, 200],      unit: 'stk' },
+  burpees:           { label: 'Burpees',          amounts: [10, 25, 50],        unit: 'stk' },
+  hjólreiðar:        { label: 'Hjólreiðar',      amounts: [10, 20, 50],        unit: 'km'  },
+  planki:            { label: 'Planki',           amounts: [1, 3, 5],           unit: 'mín' },
+  sund:              { label: 'Sund',             amounts: [1, 3, 5],           unit: 'km'  },
+  pullups:           { label: 'Pull-ups',         amounts: [10, 25, 50],        unit: 'stk' },
+  hiit:              { label: 'HIIT',             amounts: [20, 30, 45],        unit: 'mín' },
+  interval_run:      { label: 'Interval run',     amounts: [3, 5, 10],          unit: 'km'  },
+  jump_rope:         { label: 'Jump rope',        amounts: [5, 10, 20],         unit: 'mín' },
+  box_jumps:         { label: 'Box jumps',        amounts: [20, 40, 60],        unit: 'stk' },
+  stairmaster:       { label: 'Stairmaster',      amounts: [10, 20, 30],        unit: 'mín' },
+  rowing:            { label: 'Rowing',           amounts: [2000, 5000, 10000], unit: 'm'   },
+  // Legacy: not shown in new bet UI, kept for history display
+  gongutur:          { label: 'Göngutúr',         amounts: [3, 5, 10],          unit: 'km'  },
+  situps:            { label: 'Sit-ups',          amounts: [25, 50, 100],       unit: 'stk' },
+  dips:              { label: 'Dips',             amounts: [10, 20, 50],        unit: 'stk' },
+  mountain_climbers: { label: 'Mountain Climbers',amounts: [20, 50, 100],       unit: 'stk' },
 };
 
 export const LEAGUE_NAMES = [
   'Premier League',
   'UEFA Champions League',
+  'FIFA World Cup',
   'Besta deild karla',
   'Lengjudeild karla',
   '2. deild karla',
