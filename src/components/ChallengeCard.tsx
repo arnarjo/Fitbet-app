@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import type { Challenge, ChallengeStatus } from '../types/database';
 import { EXERCISE_OPTIONS } from '../types/database';
+import BetReactions from './BetReactions';
+import { useLanguage } from '../hooks/useLanguage';
+import type { TranslationKey } from '../i18n/translations';
 
 type Props = {
   challenge: Challenge;
@@ -19,27 +22,44 @@ type Props = {
   onApprove: (challengeId: string, proofId: string, approved: boolean) => Promise<void>;
 };
 
-const STATUS_CONFIG: Record<ChallengeStatus, { label: string; color: string; bg: string }> = {
-  assigned:  { label: 'Óklárað',    color: '#ff4a6e', bg: 'rgba(255,74,110,0.12)'  },
-  submitted: { label: 'Í yfirferð', color: '#ffc940', bg: 'rgba(255,201,64,0.12)' },
-  approved:  { label: 'Klárað ✓',  color: '#00e5a0', bg: 'rgba(0,229,160,0.12)'   },
-  rejected:  { label: 'Hafnað',    color: '#9090aa', bg: 'rgba(144,144,170,0.12)' },
+const STATUS_CONFIG: Record<ChallengeStatus, { key: TranslationKey; color: string; bg: string }> = {
+  assigned:  { key: 'ch_status_assigned',  color: '#ff4a6e', bg: 'rgba(255,74,110,0.12)'  },
+  submitted: { key: 'ch_status_submitted', color: '#ffc940', bg: 'rgba(255,201,64,0.12)' },
+  approved:  { key: 'ch_status_approved',  color: '#00e5a0', bg: 'rgba(0,229,160,0.12)'   },
+  rejected:  { key: 'ch_status_rejected',  color: '#9090aa', bg: 'rgba(144,144,170,0.12)' },
 };
 
 const EXERCISE_EMOJI: Record<string, string> = {
   hlaup: '🏃', armbeygjur: '💪', hnébeygjur: '🦵',
   burpees: '🔥', hjólreiðar: '🚴', planki: '🧱',
+  sund: '🏊', pullups: '🏋️', hiit: '⚡', interval_run: '🏃',
+  jump_rope: '🪢', box_jumps: '🦘', stairmaster: '🪜', rowing: '🚣',
+  // Legacy
+  gongutur: '🚶', situps: '🪑', dips: '💺', mountain_climbers: '🧗',
+};
+
+const EXERCISE_KEY: Record<string, TranslationKey> = {
+  hlaup: 'ex_hlaup', armbeygjur: 'ex_armbeygjur', hnébeygjur: 'hnebeygjur',
+  burpees: 'ex_burpees', hjólreiðar: 'ex_hjolreidar', planki: 'ex_planki',
+  sund: 'ex_sund', pullups: 'ex_pullups', hiit: 'ex_hiit', interval_run: 'ex_interval_run',
+  jump_rope: 'ex_jump_rope', box_jumps: 'ex_box_jumps',
+  stairmaster: 'ex_stairmaster', rowing: 'ex_rowing',
+  // Legacy
+  gongutur: 'ex_gongutur', situps: 'ex_situps', dips: 'ex_dips',
+  mountain_climbers: 'ex_mountain_climbers',
 };
 
 export default function ChallengeCard({ challenge, currentUserId, onSubmitProof, onApprove }: Props) {
   const [uploading, setUploading] = useState(false);
   const [approving, setApproving] = useState(false);
+  const { t } = useLanguage();
 
   const isLoser  = challenge.loser_id  === currentUserId;
   const isWinner = challenge.winner_id === currentUserId;
   const status   = STATUS_CONFIG[challenge.status];
   const exOpt    = EXERCISE_OPTIONS[challenge.exercise as keyof typeof EXERCISE_OPTIONS];
   const emoji    = EXERCISE_EMOJI[challenge.exercise] ?? '💪';
+  const exLabel  = EXERCISE_KEY[challenge.exercise] ? t(EXERCISE_KEY[challenge.exercise]) : (exOpt?.label ?? challenge.exercise);
 
   const latestProof = challenge.proofs?.length ? challenge.proofs[challenge.proofs.length - 1] : undefined;
 
@@ -84,17 +104,22 @@ export default function ChallengeCard({ challenge, currentUserId, onSubmitProof,
 
         <View style={s.titleBlock}>
           <Text style={s.challengeTitle}>
-            {challenge.amount} {exOpt?.unit ?? ''} {exOpt?.label ?? challenge.exercise}
+            {challenge.amount} {exOpt?.unit ?? ''} {exLabel}
           </Text>
           <Text style={s.involvedText}>
             {isLoser
               ? `Þú tapaðir við ${challenge.winner?.full_name ?? challenge.winner?.username ?? 'Vin'}`
               : `${challenge.loser?.full_name ?? challenge.loser?.username ?? 'Vinur'} tapaði`}
           </Text>
+          {challenge.bet?.match && (
+            <Text style={s.matchLabel}>
+              ⚽ {challenge.bet.match.home_team?.name ?? ''} – {challenge.bet.match.away_team?.name ?? ''}
+            </Text>
+          )}
         </View>
 
         <View style={[s.statusBadge, { backgroundColor: status.bg }]}>
-          <Text style={[s.statusText, { color: status.color }]}>{status.label}</Text>
+          <Text style={[s.statusText, { color: status.color }]}>{t(status.key)}</Text>
         </View>
       </View>
 
@@ -244,6 +269,10 @@ export default function ChallengeCard({ challenge, currentUserId, onSubmitProof,
           </View>
         )}
       </View>
+
+      {challenge.bet_id && challenge.status === 'approved' && (
+        <BetReactions betId={challenge.bet_id} userId={currentUserId} />
+      )}
     </View>
   );
 }
@@ -285,6 +314,11 @@ const s = StyleSheet.create({
   involvedText: {
     fontSize: 12,
     color: '#9090aa',
+  },
+  matchLabel: {
+    fontSize: 11,
+    color: '#4a6878',
+    marginTop: 3,
   },
   statusBadge: {
     paddingHorizontal: 10,
