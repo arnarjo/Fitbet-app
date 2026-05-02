@@ -2,7 +2,7 @@
 // React hook for Strava integration
 // Handles connect, disconnect, activity sync and auto-approval
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import {
   connectStrava,
@@ -89,11 +89,7 @@ export function useStrava() {
   }
 
   // ── Auto-approve open challenges ─────────────────────────
-  /**
-   * Check all open (assigned) challenges against Strava activities.
-   * Auto-approves any that match. Returns count of auto-approved.
-   */
-  async function checkAndAutoApprove(): Promise<number> {
+  const checkAndAutoApprove = useCallback(async (): Promise<number> => {
     if (!connected || !userId) return 0;
 
     const { data: openChallenges } = await supabase
@@ -101,7 +97,7 @@ export function useStrava() {
       .select('*')
       .eq('loser_id', userId)
       .eq('status', 'assigned')
-      .in('exercise', ['hlaup', 'hjólreiðar']);
+      .in('exercise', ['hlaup', 'hjólreiðar', 'interval_run', 'sund', 'rowing']);
 
     if (!openChallenges || openChallenges.length === 0) return 0;
 
@@ -121,7 +117,7 @@ export function useStrava() {
     }
 
     return approved;
-  }
+  }, [connected, userId]);
 
   // ── Format activity for display ──────────────────────────
   function formatActivity(act: StravaActivity): string {

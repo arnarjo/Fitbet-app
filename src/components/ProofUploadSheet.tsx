@@ -226,7 +226,13 @@ export default function ProofUploadSheet({
   if (!challenge) return null;
 
   const exOpt = EXERCISE_OPTIONS[challenge.exercise as keyof typeof EXERCISE_OPTIONS];
-  const emoji = { hlaup:'🏃', armbeygjur:'💪', hnébeygjur:'🦵', burpees:'🔥', hjólreiðar:'🚴', planki:'🧱' }[challenge.exercise] ?? '💪';
+  const emojiMap: Record<string, string> = {
+    hlaup:'🏃', armbeygjur:'💪', hnébeygjur:'🦵', burpees:'🔥', hjólreiðar:'🚴', planki:'🧱',
+    sund:'🏊', pullups:'🏋️', hiit:'⚡', interval_run:'🏃',
+    jump_rope:'🪢', box_jumps:'🦘', stairmaster:'🪜', rowing:'🚣',
+    gongutur:'🚶', situps:'🪑', dips:'💺', mountain_climbers:'🧗',
+  };
+  const emoji = emojiMap[challenge.exercise] ?? '💪';
 
   return (
     <Modal transparent visible={visible} onRequestClose={onClose} animationType="none" statusBarTranslucent>

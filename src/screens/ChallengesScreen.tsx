@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
   TouchableOpacity, Alert, Modal, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { useIncomingBets } from '../hooks/useIncomingBets';
+import { useStrava } from '../hooks/useStrava';
 import { supabase } from '../lib/supabase';
 import ProofUploadSheet from '../components/ProofUploadSheet';
 import BetReactions from '../components/BetReactions';
@@ -37,6 +39,7 @@ export default function ChallengesScreen() {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const { bets, outgoingBets, loading, refetch, respondToBet, cancelBet } = useIncomingBets(profile?.id ?? '');
+  const { connected: stravaConnected, checkAndAutoApprove } = useStrava();
 
   const [activeTab, setActiveTab] = useState<'virkt' | 'lokid'>('virkt');
   const [pendingAccept, setPendingAccept] = useState<PendingAccept | null>(null);
@@ -56,6 +59,15 @@ export default function ChallengesScreen() {
       if (!v) setShowOnboarding(true);
     });
   }, [profile?.id]);
+
+  useFocusEffect(useCallback(() => {
+    if (!stravaConnected) return;
+    let active = true;
+    checkAndAutoApprove().then(count => {
+      if (active && count > 0) fetchChallenges();
+    });
+    return () => { active = false; };
+  }, [stravaConnected, checkAndAutoApprove]));
 
   function dismissOnboarding() {
     setShowOnboarding(false);
@@ -417,7 +429,12 @@ export default function ChallengesScreen() {
     const isLoser  = item.loser_id  === profile?.id;
     const isWinner = item.winner_id === profile?.id;
     const proof = item.proofs?.[0];
-    const emojiMap: Record<string, string> = { hlaup:'🏃', armbeygjur:'💪', hnébeygjur:'🦵', burpees:'🔥', hjólreiðar:'🚴', planki:'🧱' };
+    const emojiMap: Record<string, string> = {
+      hlaup:'🏃', armbeygjur:'💪', hnébeygjur:'🦵', burpees:'🔥', hjólreiðar:'🚴', planki:'🧱',
+      sund:'🏊', pullups:'🏋️', hiit:'⚡', interval_run:'🏃',
+      jump_rope:'🪢', box_jumps:'🦘', stairmaster:'🪜', rowing:'🚣',
+      gongutur:'🚶', situps:'🪑', dips:'💺', mountain_climbers:'🧗',
+    };
     const statusLabel: Record<string, { label: string; color: string; bg: string }> = {
       assigned:  { label: t('challenges_awaiting_status'), color: '#FFC845', bg: 'rgba(255,200,69,0.12)' },
       submitted: { label: t('challenges_proof_submitted'), color: '#47C4EE', bg: 'rgba(71,196,238,0.12)' },
