@@ -25,6 +25,8 @@ import { EXERCISE_OPTIONS } from '../types/database';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
+const STRAVA_TRACKABLE_EXERCISES = ['hlaup', 'hjólreiðar', 'sund', 'rowing', 'interval_run'];
+
 type UploadState = 'idle' | 'picked' | 'uploading' | 'done' | 'error';
 
 type Props = {
@@ -193,35 +195,6 @@ export default function ProofUploadSheet({
     }
   }
 
-  async function handleStravaLink() {
-    if (!challenge) return;
-    // In production: open Strava OAuth, find matching activity, auto-approve
-    Alert.alert(
-      'Strava',
-      'Við leitum að samsvarandi Strava æfingu á síðustu 7 dögum. Ef við finnum hana verður áskorunin sjálfkrafa samþykkt.',
-      [
-        { text: 'Hætta við', style: 'cancel' },
-        {
-          text: 'Tengja',
-          onPress: async () => {
-            // Insert a strava-type proof
-            await supabase.from('challenge_proofs').insert({
-              challenge_id: challenge.id,
-              submitted_by: currentUserId,
-              proof_type: 'strava',
-              strava_activity_url: 'https://www.strava.com/activities/auto',
-              notes: 'Sjálfvirk Strava tenging',
-            });
-            await supabase.from('challenges')
-              .update({ status: 'submitted' })
-              .eq('id', challenge.id);
-            onSuccess();
-            onClose();
-          },
-        },
-      ]
-    );
-  }
 
   if (!challenge) return null;
 
@@ -275,54 +248,59 @@ export default function ProofUploadSheet({
         {/* ── STATE: idle ── */}
         {uploadState === 'idle' && (
           <View style={s.body}>
-            <Text style={s.sectionLabel}>VELDU TEGUND SÖNNUNAR</Text>
+            {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected ? (
+              <View style={s.stravaAutoBox}>
+                <Text style={s.stravaAutoEmoji}>🟠</Text>
+                <Text style={s.stravaAutoTitle}>Strava sér um þetta sjálfkrafa</Text>
+                <Text style={s.stravaAutoSub}>
+                  Opnaðu appið eftir æfinguna og við finnum hana sjálfkrafa.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={s.sectionLabel}>VELDU TEGUND SÖNNUNAR</Text>
 
-            <TouchableOpacity style={s.optionRow} onPress={openCamera} activeOpacity={0.8}>
-              <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
-                <Text style={s.optionEmoji}>📷</Text>
-              </View>
-              <View style={s.optionInfo}>
-                <Text style={s.optionTitle}>Taka mynd núna</Text>
-                <Text style={s.optionSub}>Opnar myndavél beint</Text>
-              </View>
-              <Text style={s.optionArrow}>›</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={s.optionRow} onPress={openCamera} activeOpacity={0.8}>
+                  <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
+                    <Text style={s.optionEmoji}>📷</Text>
+                  </View>
+                  <View style={s.optionInfo}>
+                    <Text style={s.optionTitle}>Taka mynd núna</Text>
+                    <Text style={s.optionSub}>Opnar myndavél beint</Text>
+                  </View>
+                  <Text style={s.optionArrow}>›</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('photo')} activeOpacity={0.8}>
-              <View style={[s.optionIcon, { backgroundColor: 'rgba(61,139,255,0.12)' }]}>
-                <Text style={s.optionEmoji}>🖼</Text>
-              </View>
-              <View style={s.optionInfo}>
-                <Text style={s.optionTitle}>Velja mynd úr safni</Text>
-                <Text style={s.optionSub}>Myndir á símanum þínum</Text>
-              </View>
-              <Text style={s.optionArrow}>›</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('photo')} activeOpacity={0.8}>
+                  <View style={[s.optionIcon, { backgroundColor: 'rgba(61,139,255,0.12)' }]}>
+                    <Text style={s.optionEmoji}>🖼</Text>
+                  </View>
+                  <View style={s.optionInfo}>
+                    <Text style={s.optionTitle}>Velja mynd úr safni</Text>
+                    <Text style={s.optionSub}>Myndir á símanum þínum</Text>
+                  </View>
+                  <Text style={s.optionArrow}>›</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('video')} activeOpacity={0.8}>
-              <View style={[s.optionIcon, { backgroundColor: 'rgba(255,201,64,0.12)' }]}>
-                <Text style={s.optionEmoji}>🎬</Text>
-              </View>
-              <View style={s.optionInfo}>
-                <Text style={s.optionTitle}>Hlaða upp myndband</Text>
-                <Text style={s.optionSub}>Hámark 60 sekúndur</Text>
-              </View>
-              <Text style={s.optionArrow}>›</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('video')} activeOpacity={0.8}>
+                  <View style={[s.optionIcon, { backgroundColor: 'rgba(255,201,64,0.12)' }]}>
+                    <Text style={s.optionEmoji}>🎬</Text>
+                  </View>
+                  <View style={s.optionInfo}>
+                    <Text style={s.optionTitle}>Hlaða upp myndband</Text>
+                    <Text style={s.optionSub}>Hámark 60 sekúndur</Text>
+                  </View>
+                  <Text style={s.optionArrow}>›</Text>
+                </TouchableOpacity>
 
-            {stravaConnected && (
-              <TouchableOpacity style={[s.optionRow, s.stravaOption]} onPress={handleStravaLink} activeOpacity={0.8}>
-                <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
-                  <Text style={s.optionEmoji}>⚡</Text>
-                </View>
-                <View style={s.optionInfo}>
-                  <Text style={[s.optionTitle, { color: '#00e5a0' }]}>Tengja Strava æfingu</Text>
-                  <Text style={s.optionSub}>Sjálfvirk staðfesting</Text>
-                </View>
-                <View style={s.stravaBadge}>
-                  <Text style={s.stravaBadgeText}>Tengt</Text>
-                </View>
-              </TouchableOpacity>
+                {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && !stravaConnected && (
+                  <View style={s.stravaPrompt}>
+                    <Text style={s.stravaPromptText}>
+                      💡 Tengdu Strava til að fá sjálfvirka samþykkt
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
@@ -499,6 +477,16 @@ const s = StyleSheet.create({
     borderRadius: 20,
   },
   stravaBadgeText: { fontSize: 11, fontWeight: '700', color: '#00e5a0' },
+  stravaAutoBox: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  stravaAutoEmoji: { fontSize: 40, marginBottom: 12 },
+  stravaAutoTitle: { fontSize: 17, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 },
+  stravaAutoSub: { fontSize: 14, color: '#7a9aaa', textAlign: 'center', lineHeight: 20 },
+  stravaPrompt: { marginTop: 12, backgroundColor: 'rgba(252,82,0,0.08)', borderRadius: 8, padding: 10 },
+  stravaPromptText: { fontSize: 13, color: '#FC5200', textAlign: 'center' },
   previewContainer: { position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 4 },
   previewImage: { width: '100%', height: 200 },
   videoPlaceholder: {
