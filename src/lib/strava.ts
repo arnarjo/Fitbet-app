@@ -8,13 +8,12 @@ import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const STRAVA_CLIENT_ID     = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID!;
-const STRAVA_CLIENT_SECRET = process.env.EXPO_PUBLIC_STRAVA_CLIENT_SECRET!;
-const REDIRECT_URI = 'fitbet://localhost/strava-callback';
+const STRAVA_CLIENT_ID = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID!;
+const REDIRECT_URI     = 'fitbet://localhost/strava-callback';
+const STRAVA_AUTH_FUNCTION = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/strava-auth`;
 
-const STRAVA_AUTH_URL    = 'https://www.strava.com/oauth/mobile/authorize';
-const STRAVA_TOKEN_URL   = 'https://www.strava.com/oauth/token';
-const STRAVA_ACTIVITIES  = 'https://www.strava.com/api/v3/athlete/activities';
+const STRAVA_AUTH_URL   = 'https://www.strava.com/oauth/mobile/authorize';
+const STRAVA_ACTIVITIES = 'https://www.strava.com/api/v3/athlete/activities';
 
 // ── Types ────────────────────────────────────────────────────
 export interface StravaActivity {
@@ -60,20 +59,9 @@ export async function connectStrava(userId: string): Promise<{ error?: string; t
   if (!code) return { error: 'no_code' };
   if (!scope?.includes('activity:read')) return { error: 'missing_scope' };
 
-  // Exchange code for tokens
-  const { tokens, error } = await exchangeCodeForTokens(code);
+  // Exchange code for tokens via Edge Function (secret stays server-side)
+  const { tokens, error } = await callStravaAuth('exchange', { code });
   if (error || !tokens) return { error };
-
-  // Save to Supabase
-  const { error: dbError } = await supabase.from('profiles').update({
-    strava_connected:     true,
-    strava_access_token:  tokens.access_token,
-    strava_refresh_token: tokens.refresh_token,
-    strava_expires_at:    tokens.expires_at,
-    strava_athlete_id:    tokens.athlete_id,
-  }).eq('id', userId);
-
-  if (dbError) return { error: dbError.message };
 
   return { tokens };
 }
@@ -91,6 +79,45 @@ export async function disconnectStrava(userId: string) {
   }).eq('id', userId);
 }
 
+// ── Edge Function caller ─────────────────────────────────────
+
+async function callStravaAuth(
+  action: 'exchange' | 'refresh',
+  extra: Record<string, unknown> = {},
+): Promise<{ tokens?: StravaTokens; access_token?: string; error?: string }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { error: 'no_session' };
+
+    const res = await fetch(STRAVA_AUTH_FUNCTION, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, ...extra }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return { error: data.error ?? `http_${res.status}` };
+
+    if (action === 'exchange') {
+      return {
+        tokens: {
+          access_token:  data.access_token,
+          refresh_token: data.refresh_token,
+          expires_at:    data.expires_at,
+          athlete_id:    data.athlete_id,
+        },
+      };
+    }
+
+    return { access_token: data.access_token };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
 // ── Token management ─────────────────────────────────────────
 
 function buildAuthUrl(): string {
@@ -104,42 +131,14 @@ function buildAuthUrl(): string {
   return `${STRAVA_AUTH_URL}?${params.toString()}`;
 }
 
-async function exchangeCodeForTokens(code: string): Promise<{ tokens?: StravaTokens; error?: string }> {
-  try {
-    const res = await fetch(STRAVA_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id:     STRAVA_CLIENT_ID,
-        client_secret: STRAVA_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-      }),
-    });
-
-    if (!res.ok) return { error: `token_error_${res.status}` };
-
-    const data = await res.json();
-    return {
-      tokens: {
-        access_token:  data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at:    data.expires_at,
-        athlete_id:    data.athlete?.id,
-      },
-    };
-  } catch (e) {
-    return { error: String(e) };
-  }
-}
 
 /**
- * Refresh token if expired. Call before any API request.
+ * Get a valid access token, refreshing via Edge Function if expired.
  */
 async function getValidToken(userId: string): Promise<string | null> {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('strava_access_token, strava_refresh_token, strava_expires_at')
+    .select('strava_access_token, strava_expires_at')
     .eq('id', userId)
     .single();
 
@@ -150,32 +149,10 @@ async function getValidToken(userId: string): Promise<string | null> {
     return profile.strava_access_token;
   }
 
-  // Refresh
-  try {
-    const res = await fetch(STRAVA_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id:     STRAVA_CLIENT_ID,
-        client_secret: STRAVA_CLIENT_SECRET,
-        grant_type:    'refresh_token',
-        refresh_token: profile.strava_refresh_token,
-      }),
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    await supabase.from('profiles').update({
-      strava_access_token:  data.access_token,
-      strava_refresh_token: data.refresh_token,
-      strava_expires_at:    data.expires_at,
-    }).eq('id', userId);
-
-    return data.access_token;
-  } catch {
-    return null;
-  }
+  // Refresh via Edge Function (keeps secret server-side)
+  const { access_token, error } = await callStravaAuth('refresh');
+  if (error || !access_token) return null;
+  return access_token;
 }
 
 // ── Activity fetching ─────────────────────────────────────────
@@ -232,6 +209,29 @@ export async function findMatchingActivity(
       const km = act.distance / 1000;
       const type = act.sport_type?.toLowerCase();
       if ((type === 'ride' || type === 'virtualride' || type === 'ebikeride') && km >= amount * 0.95) {
+        return act;
+      }
+    }
+
+    if (exercise === 'sund' && unit === 'km') {
+      const km = act.distance / 1000;
+      const type = act.sport_type?.toLowerCase();
+      if (type === 'swim' && km >= amount * 0.95) {
+        return act;
+      }
+    }
+
+    if (exercise === 'rowing' && unit === 'm') {
+      const type = act.sport_type?.toLowerCase();
+      if (type === 'rowing' && act.distance >= amount * 0.95) {
+        return act;
+      }
+    }
+
+    if (exercise === 'interval_run' && unit === 'km') {
+      const km = act.distance / 1000;
+      const type = act.sport_type?.toLowerCase();
+      if ((type === 'run' || type === 'virtualrun') && km >= amount * 0.95) {
         return act;
       }
     }
