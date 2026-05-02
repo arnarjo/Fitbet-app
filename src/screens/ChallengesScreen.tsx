@@ -52,6 +52,7 @@ export default function ChallengesScreen() {
   const [proofSheet, setProofSheet] = useState<Challenge | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [stravaApprovedCount, setStravaApprovedCount] = useState(0);
 
   useEffect(() => {
     if (profile?.id) Promise.all([fetchSeasonBets(), fetchChallenges()]);
@@ -64,7 +65,12 @@ export default function ChallengesScreen() {
     if (!stravaConnected) return;
     let active = true;
     checkAndAutoApprove().then(count => {
-      if (active && count > 0) fetchChallenges();
+      if (!active) return;
+      if (count > 0) {
+        fetchChallenges();
+        setStravaApprovedCount(count);
+        setTimeout(() => { if (active) setStravaApprovedCount(0); }, 4000);
+      }
     });
     return () => { active = false; };
   }, [stravaConnected, checkAndAutoApprove]));
@@ -552,6 +558,14 @@ export default function ChallengesScreen() {
           </TouchableOpacity>
         </View>
 
+        {stravaApprovedCount > 0 && (
+          <View style={s.stravaBanner}>
+            <Text style={s.stravaBannerText}>
+              ⚡ Strava samþykkti {stravaApprovedCount} {stravaApprovedCount === 1 ? 'challenge' : 'challenges'} sjálfkrafa
+            </Text>
+          </View>
+        )}
+
         {/* ── Content ── */}
         {isLoadingCurrent ? (
           <View style={s.center}><ActivityIndicator color="#21A56A" /></View>
@@ -667,6 +681,22 @@ export default function ChallengesScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#071D2A' },
+  stravaBanner: {
+    backgroundColor: 'rgba(252, 82, 0, 0.1)',
+    borderColor: '#FC5200',
+    borderWidth: 1,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  stravaBannerText: {
+    color: '#FC5200',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   list: { flex: 1 },
   listContent: { padding: 16, paddingBottom: 40 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
