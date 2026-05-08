@@ -265,25 +265,22 @@ export async function tryAutoApproveChallenge(
     proof_type:          'strava',
     strava_activity_url: stravaUrl,
     notes:               `Sjálfvirk Strava staðfesting — ${match.name} (${(match.distance / 1000).toFixed(1)} km)`,
-    status:              'approved',
-    reviewed_by:         userId,
   });
 
   if (proofError) return false;
 
-  // Update challenge to approved
+  // Update challenge to submitted
   await supabase.from('challenges').update({
-    status:              'approved',
+    status:              'submitted',
     strava_activity_id:  String(match.id),
-    completed_at:        new Date().toISOString(),
   }).eq('id', challengeId);
 
   // Notify winner
   await supabase.from('notifications').insert({
     user_id: winnerId,
-    type:    'challenge_approved',
-    title:   'Áskorun staðfest sjálfkrafa ⚡',
-    body:    'Strava staðfesti áskorunina sjálfkrafa.',
+    type:    'challenge_submitted',
+    title:   'Sönnun móttekin (Strava) ⚡',
+    body:    `Strava fann samsvarandi æfingu. Farðu og staðfestu!`,
     data:    { challenge_id: challengeId, strava_activity_id: match.id },
   });
 

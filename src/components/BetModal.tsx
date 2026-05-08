@@ -69,7 +69,7 @@ export default function BetModal({
   const [newBetId, setNewBetId]     = useState<string | null>(null);
 
   const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-  const { t, lang } = useLanguage();
+  const { t, lang } = useLanguage() as any;
   const { canUseCustomChallenges } = usePremium();
 
   const STEP_LABELS = [t('bet_modal_your_pred'), t('bet_modal_opponent'), t('bet_modal_challenge_if'), t('common_confirm')];

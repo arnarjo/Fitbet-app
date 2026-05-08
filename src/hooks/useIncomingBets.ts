@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { MatchResult } from '../types/database';
+import type { MatchResult, Bet } from '../types/database';
 
 export function useIncomingBets(userId: string) {
-  const [bets, setBets] = useState<any[]>([]);
-  const [outgoingBets, setOutgoingBets] = useState<any[]>([]);
+  const [bets, setBets] = useState<Bet[]>([]);
+  const [outgoingBets, setOutgoingBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function fetchIncomingBets() {

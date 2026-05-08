@@ -232,17 +232,16 @@ export default function AdminScreen() {
     const now = new Date().toISOString();
 
     // Settle each bet — compare by team UUID
-    const updates = (bets ?? []).map(b => {
+    for (const b of bets ?? []) {
       const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
       const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
-      return supabase.from('season_bets').update({
+      await supabase.from('season_bets').update({
         status:    'settled',
         winner_id: challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null,
         loser_id:  challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null,
         settled_at: now,
       }).eq('id', b.id);
-    });
-    await Promise.all(updates);
+    }
 
     // Mark market settled (store team UUID in winning_team_id)
     await supabase.from('season_markets').update({
@@ -252,16 +251,14 @@ export default function AdminScreen() {
     }).eq('id', mk.id);
 
     // Update profile stats for winners and losers
-    const profileUpdates: Promise<any>[] = [];
     for (const b of bets ?? []) {
       const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
       const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
       const winnerId = challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null;
       const loserId  = challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null;
-      if (winnerId) profileUpdates.push(supabase.rpc('increment_wins', { p_user_id: winnerId }));
-      if (loserId)  profileUpdates.push(supabase.rpc('increment_losses', { p_user_id: loserId }));
+      if (winnerId) await supabase.rpc('increment_wins', { p_user_id: winnerId });
+      if (loserId)  await supabase.rpc('increment_losses', { p_user_id: loserId });
     }
-    await Promise.all(profileUpdates);
 
     // Send notifications
     const notifs: any[] = [];

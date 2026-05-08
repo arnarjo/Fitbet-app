@@ -11,7 +11,7 @@ import { useStrava } from '../hooks/useStrava';
 import { supabase } from '../lib/supabase';
 import ProofUploadSheet from '../components/ProofUploadSheet';
 import BetReactions from '../components/BetReactions';
-import type { MatchResult, Challenge, SeasonBet } from '../types/database';
+import type { MatchResult, Challenge, SeasonBet, Bet } from '../types/database';
 import { LEAGUE_COLOR } from '../constants/leagues';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -30,9 +30,9 @@ type PendingAccept = {
 };
 
 type ListItem =
-  | { kind: 'incoming'; data: any; id: string }
-  | { kind: 'outgoing'; data: any; id: string }
-  | { kind: 'season';   data: any; id: string }
+  | { kind: 'incoming'; data: Bet; id: string }
+  | { kind: 'outgoing'; data: Bet; id: string }
+  | { kind: 'season';   data: SeasonBet; id: string }
   | { kind: 'challenge'; data: Challenge; id: string };
 
 export default function ChallengesScreen() {
@@ -140,7 +140,7 @@ export default function ChallengesScreen() {
     await fetchChallenges();
   }
 
-  async function respondToSeasonBet(betId: string, accept: boolean, bet: any) {
+  async function respondToSeasonBet(betId: string, accept: boolean, bet: SeasonBet) {
     await supabase.from('season_bets').update({ status: accept ? 'accepted' : 'declined' }).eq('id', betId);
     await supabase.from('notifications').insert({
       user_id: bet.challenger_id,
@@ -154,7 +154,7 @@ export default function ChallengesScreen() {
     await fetchSeasonBets();
   }
 
-  function openAcceptModal(item: any) {
+  function openAcceptModal(item: Bet) {
     setSelectedPrediction(null);
     setPendingAccept({
       betId: item.id,
@@ -242,7 +242,62 @@ export default function ChallengesScreen() {
 
   // ── Render helpers ───────────────────────────────────────────────────────
 
-  function renderIncomingCard(item: any) {
+  function renderSettledResult(item: Bet) {
+    const homeName = item.match?.home_team?.name ?? 'Home';
+    const awayName = item.match?.away_team?.name ?? 'Away';
+    const homeScore = item.match?.home_score ?? 0;
+    const awayScore = item.match?.away_score ?? 0;
+    const isWin = item.winner_id === profile?.id;
+
+    return (
+      <View style={s.settledBox}>
+        <View style={s.scoreBox}>
+          <View style={s.scoreTeam}>
+            <Text style={s.scoreTeamName} numberOfLines={1}>{homeName}</Text>
+          </View>
+          <View style={s.scoreNums}>
+            <Text style={s.scoreText}>{homeScore} - {awayScore}</Text>
+          </View>
+          <View style={[s.scoreTeam, { alignItems: 'flex-end' }]}>
+            <Text style={s.scoreTeamName} numberOfLines={1}>{awayName}</Text>
+          </View>
+        </View>
+
+        <View style={s.settledPredRow}>
+          <View style={s.predStatusCol}>
+            <Text style={s.predLabel}>{t('challenges_opp_pred_label')}</Text>
+            <View style={s.predValueRow}>
+              <Text style={s.predValue}>
+                {getPredictionLabel(item.challenger_prediction, homeName, awayName, t('matches_predict_draw'))}
+              </Text>
+              <Text style={{ marginLeft: 4 }}>
+                {item.winner_id === item.challenger_id ? '✅' : '❌'}
+              </Text>
+            </View>
+          </View>
+          <View style={[s.predStatusCol, { alignItems: 'flex-end' }]}>
+            <Text style={s.predLabel}>{t('challenges_opp_pred_mine')}</Text>
+            <View style={s.predValueRow}>
+              <Text style={[s.predValue, { color: '#47C4EE' }]}>
+                {getPredictionLabel(item.opponent_prediction || '', homeName, awayName, t('matches_predict_draw'))}
+              </Text>
+              <Text style={{ marginLeft: 4 }}>
+                {item.winner_id === item.opponent_id ? '✅' : '❌'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={[s.winBadge, { backgroundColor: isWin ? 'rgba(33,165,106,0.15)' : 'rgba(255,74,110,0.15)' }]}>
+          <Text style={[s.winBadgeText, { color: isWin ? '#21A56A' : '#ff4a6e' }]}>
+            {isWin ? `🏆 ${t('challenges_you_won')}` : `😅 ${t('challenges_you_lost')}`}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  function renderIncomingCard(item: Bet) {
     const challengerName = item.challenger?.full_name ?? item.challenger?.username ?? t('challenges_unknown');
     const homeName = item.match?.home_team?.name ?? t('bet_modal_home_team');
     const awayName = item.match?.away_team?.name ?? t('bet_modal_away_team');
@@ -293,6 +348,7 @@ export default function ChallengesScreen() {
             </Text>
           </View>
         )}
+        {item.status === 'settled' && renderSettledResult(item)}
         {item.status === 'settled' && profile?.id && (
           <BetReactions betId={item.id} userId={profile.id} />
         )}
@@ -300,7 +356,7 @@ export default function ChallengesScreen() {
     );
   }
 
-  function renderOutgoingCard(item: any) {
+  function renderOutgoingCard(item: Bet) {
     const opponentName = item.opponent?.full_name ?? item.opponent?.username ?? t('challenges_unknown');
     const homeName = item.match?.home_team?.name ?? t('bet_modal_home_team');
     const awayName = item.match?.away_team?.name ?? t('bet_modal_away_team');
@@ -357,6 +413,7 @@ export default function ChallengesScreen() {
             </Text>
           </View>
         )}
+        {item.status === 'settled' && renderSettledResult(item)}
         {item.status === 'settled' && profile?.id && (
           <BetReactions betId={item.id} userId={profile.id} />
         )}
@@ -364,7 +421,7 @@ export default function ChallengesScreen() {
     );
   }
 
-  function renderSeasonCard(item: any) {
+  function renderSeasonCard(item: SeasonBet) {
     const isChallenger = item.challenger_id === profile?.id;
     const isIncoming   = item.status === 'pending' && item.opponent_id === profile?.id;
     const myTeam   = isChallenger ? item.challenger_team?.name : item.opponent_team?.name;
@@ -680,6 +737,48 @@ export default function ChallengesScreen() {
 }
 
 const s = StyleSheet.create({
+  settledBox: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  scoreBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  scoreTeam: { flex: 1 },
+  scoreTeamName: { fontSize: 13, fontWeight: '700', color: '#7a9aaa' },
+  scoreNums: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#eef4f8',
+    letterSpacing: 2,
+  },
+  settledPredRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  predStatusCol: { flex: 1 },
+  predValueRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  winBadge: {
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  winBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
   container: { flex: 1, backgroundColor: '#071D2A' },
   stravaBanner: {
     backgroundColor: 'rgba(252, 82, 0, 0.1)',

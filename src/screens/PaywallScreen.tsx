@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import {
   getOfferings, purchasePremium, restorePurchases,
-  type PurchasesOffering,
 } from '../lib/revenuecat';
 import { usePremium } from '../hooks/usePremium';
 
@@ -40,7 +39,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
   const navigation = useNavigation<any>();
   const { refresh } = usePremium();
 
-  const [offering, setOffering]   = useState<PurchasesOffering | null>(null);
+  const [offering, setOffering]   = useState<any | null>(null);
   const [loading, setLoading]     = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);

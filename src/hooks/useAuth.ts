@@ -115,7 +115,10 @@ export function useAuth() {
         token: idToken,
       });
 
-      if (authError) return { error: authError };
+      if (authError) {
+        console.error('Supabase Google Auth Error:', authError);
+        return { error: new Error('Innskráning tókst ekki. Vinsamlegast reyndu aftur.') };
+      }
       if (!authData.user) return { error: new Error('No user returned from Supabase') };
 
       // Check if profile exists

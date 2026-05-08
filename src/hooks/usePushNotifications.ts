@@ -21,6 +21,8 @@ Notifications.setNotificationHandler({
       shouldShowAlert: shouldShow,
       shouldPlaySound: shouldShow,
       shouldSetBadge:  true,
+      shouldShowBanner: shouldShow,
+      shouldShowList:   shouldShow,
     };
   },
 });
@@ -63,8 +65,8 @@ export function usePushNotifications(
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
 
-  const notifListener  = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notifListener  = useRef<Notifications.Subscription>(undefined);
+  const responseListener = useRef<Notifications.Subscription>(undefined);
   const appStateRef    = useRef(AppState.currentState);
 
   useEffect(() => {
@@ -88,16 +90,16 @@ export function usePushNotifications(
     );
 
     // ── App came back to foreground — refresh badge ──
-    const appStateSub = AppState.addEventListener('change', async (state) => {
+    const appStateSub = AppState.addEventListener('change', (state) => {
       if (appStateRef.current.match(/inactive|background/) && state === 'active') {
-        await Notifications.setBadgeCountAsync(0);
-        await markNotificationsRead();
+        void Notifications.setBadgeCountAsync(0);
+        void markNotificationsRead(userId);
       }
       appStateRef.current = state;
     });
 
     // Handle notification that launched the app
-    Notifications.getLastNotificationResponseAsync().then((response) => {
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) handleNotificationTap(response.notification.request.content.data);
     });
 
@@ -129,7 +131,22 @@ export function usePushNotifications(
 
     if (!projectId) return;
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    let token;
+    try {
+      if (Platform.OS === 'android') {
+        // Use native device token for direct FCM v1 migration on Android
+        const deviceToken = await Notifications.getDevicePushTokenAsync();
+        token = deviceToken.data;
+      } else {
+        // Use Expo push token for iOS
+        const expoToken = await Notifications.getExpoPushTokenAsync({ projectId });
+        token = expoToken.data;
+      }
+    } catch (e) {
+      console.error('Error getting push token:', e);
+      return;
+    }
+
     if (!token) return;
     setExpoPushToken(token);
 
@@ -179,12 +196,12 @@ export function usePushNotifications(
   }
 
   // ── Mark notifications read in DB ────────────────────────
-  async function markNotificationsRead() {
-    if (!userId) return;
+  async function markNotificationsRead(uid: string) {
+    if (!uid) return;
     await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('user_id', userId)
+      .eq('user_id', uid)
       .eq('read', false);
   }
 

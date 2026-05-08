@@ -248,7 +248,7 @@ export default function ProofUploadSheet({
         {/* ── STATE: idle ── */}
         {uploadState === 'idle' && (
           <View style={s.body}>
-            {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected ? (
+            {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected && (
               <View style={s.stravaAutoBox}>
                 <Text style={s.stravaAutoEmoji}>🟠</Text>
                 <Text style={s.stravaAutoTitle}>Strava sér um þetta sjálfkrafa</Text>
@@ -256,9 +256,9 @@ export default function ProofUploadSheet({
                   Opnaðu appið eftir æfinguna og við finnum hana sjálfkrafa.
                 </Text>
               </View>
-            ) : (
-              <>
-                <Text style={s.sectionLabel}>VELDU TEGUND SÖNNUNAR</Text>
+            )}
+
+            <Text style={s.sectionLabel}>VELDU TEGUND SÖNNUNAR</Text>
 
                 <TouchableOpacity style={s.optionRow} onPress={openCamera} activeOpacity={0.8}>
                   <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
@@ -300,8 +300,6 @@ export default function ProofUploadSheet({
                     </Text>
                   </View>
                 )}
-              </>
-            )}
           </View>
         )}
 

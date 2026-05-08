@@ -42,6 +42,11 @@ export function usePremium() {
   }, [profile?.id]);
 
   async function init() {
+    if (profile?.is_admin) {
+      setPremium(true);
+      setLoading(false);
+      return;
+    }
     await setupRevenueCat(profile!.id);
     const status = await isPremium();
     setPremium(status);
@@ -49,6 +54,10 @@ export function usePremium() {
   }
 
   async function refresh() {
+    if (profile?.is_admin) {
+      setPremium(true);
+      return true;
+    }
     const status = await isPremium();
     setPremium(status);
     return status;

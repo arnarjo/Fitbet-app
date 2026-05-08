@@ -130,7 +130,14 @@ export interface SeasonBet {
   status: BetStatus;
   winner_id: string | null;
   loser_id: string | null;
+  amount: number | null;
+  unit: string | null;
+  exercise: string | null;
   market?: SeasonMarket;
+  challenger?: Profile;
+  opponent?: Profile;
+  challenger_team?: Team;
+  opponent_team?: Team;
   created_at: string;
 }
 

@@ -36,7 +36,7 @@ export async function isPremium(): Promise<boolean> {
 }
 
 // ── Get offerings ────────────────────────────────────────────
-export async function getOfferings(): Promise<PurchasesOffering | null> {
+export async function getOfferings(): Promise<any | null> {
   try {
     const offerings = await Purchases.getOfferings();
     return offerings.current;
