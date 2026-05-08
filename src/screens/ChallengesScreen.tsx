@@ -85,7 +85,7 @@ export default function ChallengesScreen() {
     setChallengesLoading(true);
     const { data } = await supabase
       .from('challenges')
-      .select('*, loser:profiles!loser_id(*), winner:profiles!winner_id(*), proofs:challenge_proofs(*), bet:bets(match:matches(home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)))')
+      .select('*, loser:profiles!loser_id(*), winner:profiles!winner_id(*), proofs:challenge_proofs(*), bet:bets(challenger_id, challenger_prediction, opponent_prediction, match:matches(result, home_score, away_score, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)))')
       .or(`loser_id.eq.${profile.id},winner_id.eq.${profile.id}`)
       .not('status', 'eq', 'approved')
       .order('created_at', { ascending: false });
@@ -242,12 +242,58 @@ export default function ChallengesScreen() {
 
   // ── Render helpers ───────────────────────────────────────────────────────
 
+  function renderSettledResult(item: any, myPrediction: string | null, oppPrediction: string | null, myLabel: string, oppLabel: string, homeName: string, awayName: string, drawLabel: string) {
+    const result = item.match?.result as string | null;
+    const homeScore = item.match?.home_score;
+    const awayScore = item.match?.away_score;
+    const iWon = item.winner_id === profile?.id;
+    const nobodyWon = !item.winner_id;
+
+    return (
+      <>
+        {homeScore != null && awayScore != null && (
+          <View style={s.scoreBox}>
+            <Text style={s.scoreTeam} numberOfLines={1}>{homeName}</Text>
+            <Text style={s.scoreNums}>{homeScore} – {awayScore}</Text>
+            <Text style={s.scoreTeam} numberOfLines={1}>{awayName}</Text>
+          </View>
+        )}
+        <View style={s.settledPredRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.predLabel}>{myLabel}</Text>
+            <Text style={[s.predValue, { color: myPrediction === result ? '#21A56A' : '#ff4a6e' }]}>
+              {myPrediction ? getPredictionLabel(myPrediction, homeName, awayName, drawLabel) : '—'}
+              {myPrediction === result ? ' ✓' : ' ✗'}
+            </Text>
+          </View>
+          <View style={[s.winBadge, {
+            backgroundColor: nobodyWon ? 'rgba(255,200,69,0.12)' : iWon ? 'rgba(33,165,106,0.15)' : 'rgba(255,74,110,0.15)',
+          }]}>
+            <Text style={[s.winBadgeText, {
+              color: nobodyWon ? '#FFC845' : iWon ? '#21A56A' : '#ff4a6e',
+            }]}>
+              {nobodyWon ? '🤝 Ógilt' : iWon ? '🏆 Vannst' : '😔 Tapðir'}
+            </Text>
+          </View>
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={s.predLabel}>{oppLabel}</Text>
+            <Text style={[s.predValue, { color: oppPrediction === result ? '#21A56A' : '#ff4a6e' }]}>
+              {oppPrediction ? getPredictionLabel(oppPrediction, homeName, awayName, drawLabel) : '—'}
+              {oppPrediction === result ? ' ✓' : ' ✗'}
+            </Text>
+          </View>
+        </View>
+      </>
+    );
+  }
+
   function renderIncomingCard(item: any) {
     const challengerName = item.challenger?.full_name ?? item.challenger?.username ?? t('challenges_unknown');
     const homeName = item.match?.home_team?.name ?? t('bet_modal_home_team');
     const awayName = item.match?.away_team?.name ?? t('bet_modal_away_team');
     const drawLabel = t('matches_predict_draw');
     const isPending = item.status === 'pending';
+    const isSettled = item.status === 'settled';
 
     return (
       <View style={[s.card, isPending && { borderColor: 'rgba(255,200,69,0.35)' }]}>
@@ -255,7 +301,7 @@ export default function ChallengesScreen() {
           <Text style={s.name}>⚔️ {challengerName}</Text>
           <View style={[s.statusBadge, !isPending && s.statusBadgeDone]}>
             <Text style={[s.statusText, !isPending && s.statusTextDone]}>
-              {isPending ? t('challenges_pending') : item.status === 'accepted' ? `✓ ${t('challenges_accepted')}` : `✕ ${t('challenges_declined')}`}
+              {isPending ? t('challenges_pending') : isSettled ? '🏁 Lokið' : item.status === 'accepted' ? `✓ ${t('challenges_accepted')}` : `✕ ${t('challenges_declined')}`}
             </Text>
           </View>
         </View>
@@ -263,37 +309,42 @@ export default function ChallengesScreen() {
         <View style={s.betInfoRow}>
           <Text style={s.betInfoText}>🏋️ {item.amount} {item.unit} {item.exercise}</Text>
         </View>
-        <View style={s.predRow}>
-          <View>
-            <Text style={s.predLabel}>{t('challenges_opp_pred_label')}</Text>
-            <Text style={s.predValue}>{getPredictionLabel(item.challenger_prediction, homeName, awayName, drawLabel)}</Text>
-          </View>
-          {item.status === 'accepted' && item.opponent_prediction && (
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.predLabel}>{t('challenges_opp_pred_mine')}</Text>
-              <Text style={[s.predValue, { color: '#47C4EE' }]}>
-                {getPredictionLabel(item.opponent_prediction, homeName, awayName, drawLabel)}
-              </Text>
+        {!isSettled && (
+          <View style={s.predRow}>
+            <View>
+              <Text style={s.predLabel}>{t('challenges_opp_pred_label')}</Text>
+              <Text style={s.predValue}>{getPredictionLabel(item.challenger_prediction, homeName, awayName, drawLabel)}</Text>
             </View>
-          )}
-        </View>
-        {isPending ? (
-          <View style={s.actionsRow}>
-            <TouchableOpacity style={s.rejectBtn} onPress={() => handleDecline(item.id)}>
-              <Text style={s.rejectBtnText}>{t('challenges_decline')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.acceptBtn} onPress={() => openAcceptModal(item)}>
-              <Text style={s.acceptBtnText}>{t('challenges_bet_on')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={s.doneRow}>
-            <Text style={[s.doneText, item.status === 'accepted' && { color: '#21A56A', fontWeight: '700' }]}>
-              {item.status === 'accepted' ? t('challenges_bet_accepted_msg') : t('challenges_bet_declined_msg')}
-            </Text>
+            {item.status === 'accepted' && item.opponent_prediction && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.predLabel}>{t('challenges_opp_pred_mine')}</Text>
+                <Text style={[s.predValue, { color: '#47C4EE' }]}>
+                  {getPredictionLabel(item.opponent_prediction, homeName, awayName, drawLabel)}
+                </Text>
+              </View>
+            )}
           </View>
         )}
-        {item.status === 'settled' && profile?.id && (
+        {isSettled
+          ? renderSettledResult(item, item.opponent_prediction, item.challenger_prediction, t('challenges_opp_pred_mine'), t('challenges_opp_pred_label'), homeName, awayName, drawLabel)
+          : isPending ? (
+            <View style={s.actionsRow}>
+              <TouchableOpacity style={s.rejectBtn} onPress={() => handleDecline(item.id)}>
+                <Text style={s.rejectBtnText}>{t('challenges_decline')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.acceptBtn} onPress={() => openAcceptModal(item)}>
+                <Text style={s.acceptBtnText}>{t('challenges_bet_on')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={s.doneRow}>
+              <Text style={[s.doneText, item.status === 'accepted' && { color: '#21A56A', fontWeight: '700' }]}>
+                {item.status === 'accepted' ? t('challenges_bet_accepted_msg') : t('challenges_bet_declined_msg')}
+              </Text>
+            </View>
+          )
+        }
+        {isSettled && profile?.id && (
           <BetReactions betId={item.id} userId={profile.id} />
         )}
       </View>
@@ -306,6 +357,7 @@ export default function ChallengesScreen() {
     const awayName = item.match?.away_team?.name ?? t('bet_modal_away_team');
     const drawLabel = t('matches_predict_draw');
     const isPending = item.status === 'pending';
+    const isSettled = item.status === 'settled';
 
     return (
       <View style={s.card}>
@@ -313,7 +365,7 @@ export default function ChallengesScreen() {
           <Text style={s.name}>→ {opponentName}</Text>
           <View style={[s.statusBadge, !isPending && s.statusBadgeDone]}>
             <Text style={[s.statusText, !isPending && s.statusTextDone]}>
-              {isPending ? t('challenges_pending') : item.status === 'accepted' ? `✓ ${t('challenges_accepted')}` : `✕ ${t('challenges_declined')}`}
+              {isPending ? t('challenges_pending') : isSettled ? '🏁 Lokið' : item.status === 'accepted' ? `✓ ${t('challenges_accepted')}` : `✕ ${t('challenges_declined')}`}
             </Text>
           </View>
         </View>
@@ -321,43 +373,48 @@ export default function ChallengesScreen() {
         <View style={s.betInfoRow}>
           <Text style={s.betInfoText}>🏋️ {item.amount} {item.unit} {item.exercise}</Text>
         </View>
-        <View style={s.predRow}>
-          <View>
-            <Text style={s.predLabel}>{t('challenges_my_pred')}</Text>
-            <Text style={s.predValue}>{getPredictionLabel(item.challenger_prediction, homeName, awayName, drawLabel)}</Text>
-          </View>
-          {item.status === 'accepted' && item.opponent_prediction && (
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.predLabel}>{t('challenges_opp_pred_label')}</Text>
-              <Text style={[s.predValue, { color: '#47C4EE' }]}>
-                {getPredictionLabel(item.opponent_prediction, homeName, awayName, drawLabel)}
-              </Text>
+        {!isSettled && (
+          <View style={s.predRow}>
+            <View>
+              <Text style={s.predLabel}>{t('challenges_my_pred')}</Text>
+              <Text style={s.predValue}>{getPredictionLabel(item.challenger_prediction, homeName, awayName, drawLabel)}</Text>
             </View>
-          )}
-        </View>
-        {isPending ? (
-          <View style={s.actionsRow}>
-            <Text style={[s.doneText, { flex: 1 }]}>{t('challenges_awaiting_friend')}</Text>
-            <TouchableOpacity style={s.retractBtn} onPress={() =>
-              Alert.alert(t('challenges_cancel_q'), t('challenges_sure'), [
-                { text: t('common_cancel'), style: 'cancel' },
-                { text: t('challenges_cancel_bet'), style: 'destructive', onPress: async () => {
-                  const { error } = await cancelBet(item.id);
-                  if (error) Alert.alert(t('common_error'), t('bet_modal_err_msg'));
-                }},
-              ])
-            }>
-              <Text style={s.retractBtnText}>{t('challenges_cancel_bet')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={s.doneRow}>
-            <Text style={[s.doneText, item.status === 'accepted' && { color: '#21A56A', fontWeight: '700' }]}>
-              {item.status === 'accepted' ? t('challenges_accepted_waiting') : t('challenges_friend_declined')}
-            </Text>
+            {item.status === 'accepted' && item.opponent_prediction && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.predLabel}>{t('challenges_opp_pred_label')}</Text>
+                <Text style={[s.predValue, { color: '#47C4EE' }]}>
+                  {getPredictionLabel(item.opponent_prediction, homeName, awayName, drawLabel)}
+                </Text>
+              </View>
+            )}
           </View>
         )}
-        {item.status === 'settled' && profile?.id && (
+        {isSettled
+          ? renderSettledResult(item, item.challenger_prediction, item.opponent_prediction, t('challenges_my_pred'), t('challenges_opp_pred_label'), homeName, awayName, drawLabel)
+          : isPending ? (
+            <View style={s.actionsRow}>
+              <Text style={[s.doneText, { flex: 1 }]}>{t('challenges_awaiting_friend')}</Text>
+              <TouchableOpacity style={s.retractBtn} onPress={() =>
+                Alert.alert(t('challenges_cancel_q'), t('challenges_sure'), [
+                  { text: t('common_cancel'), style: 'cancel' },
+                  { text: t('challenges_cancel_bet'), style: 'destructive', onPress: async () => {
+                    const { error } = await cancelBet(item.id);
+                    if (error) Alert.alert(t('common_error'), t('bet_modal_err_msg'));
+                  }},
+                ])
+              }>
+                <Text style={s.retractBtnText}>{t('challenges_cancel_bet')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={s.doneRow}>
+              <Text style={[s.doneText, item.status === 'accepted' && { color: '#21A56A', fontWeight: '700' }]}>
+                {item.status === 'accepted' ? t('challenges_accepted_waiting') : t('challenges_friend_declined')}
+              </Text>
+            </View>
+          )
+        }
+        {isSettled && profile?.id && (
           <BetReactions betId={item.id} userId={profile.id} />
         )}
       </View>
@@ -748,6 +805,19 @@ const s = StyleSheet.create({
   betInfoText: { fontSize: 13, fontWeight: '700', color: '#eef4f8' },
   doneRow: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 14 },
   doneText: { color: '#c5c8d4', fontSize: 13 },
+  scoreBox: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
+  },
+  scoreTeam: { fontSize: 12, color: '#7a9aaa', fontWeight: '600', flex: 1 },
+  scoreNums: { fontSize: 18, fontWeight: '900', color: '#eef4f8', paddingHorizontal: 10 },
+  settledPredRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  winBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  winBadgeText: { fontSize: 12, fontWeight: '800' },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
   sheet: {

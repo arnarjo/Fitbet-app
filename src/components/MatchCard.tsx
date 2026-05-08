@@ -6,22 +6,15 @@ import {
   StyleSheet,
 } from 'react-native';
 import type { Match } from '../types/database';
+import { LEAGUE_COLOR } from '../constants/leagues';
 
 type Props = {
   match: Match;
   onOpenBet: (match: Match) => void;
 };
 
-const LEAGUE_COLORS: Record<string, string> = {
-  'Premier League': '#21A56A',
-  'UEFA Champions League': '#47C4EE',
-  'FIFA World Cup': '#ff4a6e',
-  'Besta deild karla': '#FFC845',
-  'Lengjudeild karla': '#ff9f40',
-};
-
 export default function MatchCard({ match, onOpenBet }: Props) {
-  const accentColor = LEAGUE_COLORS[match.league_name] ?? '#21A56A';
+  const accentColor = LEAGUE_COLOR[match.league_name] ?? '#21A56A';
 
   const isFinished =
     match.status === 'finished' ||

@@ -14,6 +14,7 @@ import {
   type PurchasesOffering,
 } from '../lib/revenuecat';
 import { usePremium } from '../hooks/usePremium';
+import { useLanguage } from '../hooks/useLanguage';
 
 type Props = {
   feature?: 'leagues' | 'strava' | 'challenges' | 'general';
@@ -21,24 +22,25 @@ type Props = {
   onClose?: () => void;
 };
 
-const FEATURE_MESSAGES: Record<string, { title: string; desc: string; emoji: string }> = {
-  leagues:    { emoji: '🏅', title: 'Ótakmarkaðar deildir',   desc: 'Búðu til eins margar deildir og þú vilt' },
-  strava:     { emoji: '⚡', title: 'Strava tenging',          desc: 'Staðfestu áskoranir sjálfkrafa' },
-  challenges: { emoji: '💪', title: 'Sérsniðnar áskoranir',   desc: 'Búðu til eigin áskoranir' },
-  general:    { emoji: '🏆', title: 'FitBet Premium',          desc: 'Fáðu allt það besta' },
-};
-
-const PREMIUM_FEATURES = [
-  { emoji: '🌍', title: 'Premier League, CL & World Cup', desc: 'Veðjaðu á leiki í erlendum deildum og heimsmeistaramótinu' },
-  { emoji: '🏅', title: 'Ótakmarkaðar deildir',  desc: 'Búðu til eins margar og þú vilt (ókeypis: 2)' },
-  { emoji: '⚡', title: 'Strava tenging',          desc: 'Hlaup og hjólreiðar staðfest sjálfkrafa' },
-  { emoji: '💪', title: 'Sérsniðnar áskoranir',   desc: 'Veldu hvaða æfingu sem er, hvaða magn' },
-  { emoji: '📊', title: 'Ítarleg tölfræði',        desc: 'Sjáðu nákvæma greiningu á sigrum og töpum' },
-];
-
 export default function PaywallScreen({ feature = 'general', onSuccess, onClose }: Props) {
   const navigation = useNavigation<any>();
   const { refresh } = usePremium();
+  const { t } = useLanguage();
+
+  const FEATURE_MESSAGES = {
+    leagues:    { emoji: '🏅', title: t('paywall_feat_leagues_title'), desc: t('paywall_feat_leagues_desc') },
+    strava:     { emoji: '⚡', title: t('paywall_feat_strava_title'),  desc: t('paywall_feat_strava_desc')  },
+    challenges: { emoji: '💪', title: t('paywall_feat_custom_title'),  desc: t('paywall_feat_custom_desc')  },
+    general:    { emoji: '🏆', title: t('paywall_feat_general_title'), desc: t('paywall_feat_general_desc') },
+  };
+
+  const PREMIUM_FEATURES = [
+    { emoji: '🌍', title: t('paywall_feat1_title'), desc: t('paywall_feat1_desc') },
+    { emoji: '🏅', title: t('paywall_feat2_title'), desc: t('paywall_feat2_desc') },
+    { emoji: '⚡', title: t('paywall_feat3_title'), desc: t('paywall_feat3_desc') },
+    { emoji: '💪', title: t('paywall_feat4_title'), desc: t('paywall_feat4_desc') },
+    { emoji: '📊', title: t('paywall_feat5_title'), desc: t('paywall_feat5_desc') },
+  ];
 
   const [offering, setOffering]   = useState<PurchasesOffering | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -72,12 +74,12 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
     if (success) {
       await refresh();
       Alert.alert(
-        'Velkominn í Premium! 🏆',
-        'Þú hefur nú aðgang að öllum Premium eiginleikum FitBet.',
-        [{ text: 'Frábært!', onPress: () => { onSuccess?.(); navigation.goBack(); } }]
+        t('paywall_welcome'),
+        t('paywall_welcome_msg'),
+        [{ text: t('paywall_great'), onPress: () => { onSuccess?.(); navigation.goBack(); } }]
       );
     } else if (error !== 'cancelled') {
-      Alert.alert('Villa', 'Ekki tókst að ljúka kaupum. Reyndu aftur.');
+      Alert.alert(t('paywall_error'), t('paywall_err_purchase'));
     }
   }
 
@@ -88,11 +90,11 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
 
     if (restored) {
       await refresh();
-      Alert.alert('Endurheimt! ✅', 'Premium áskrift þín hefur verið endurheimtt.',
-        [{ text: 'Í lagi', onPress: () => { onSuccess?.(); navigation.goBack(); } }]
+      Alert.alert(t('paywall_restored_title'), t('paywall_restored_msg2'),
+        [{ text: t('common_ok'), onPress: () => { onSuccess?.(); navigation.goBack(); } }]
       );
     } else {
-      Alert.alert('Engin áskrift fundust', 'Við fundum engar fyrri kaup tengd þessum reikningi.');
+      Alert.alert(t('paywall_no_purchases'), t('paywall_no_purchases_msg'));
     }
   }
 
@@ -121,8 +123,8 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
             <Text style={s.heroTitle}>FitBet Premium</Text>
             <Text style={s.heroSub}>
               {feature !== 'general'
-                ? `Þú þarft Premium til að nota ${featureMsg.title}`
-                : 'Fáðu allt það besta úr FitBet'
+                ? `${t('paywall_need_feat')} ${featureMsg.title}`
+                : t('paywall_hero_general')
               }
             </Text>
           </View>
@@ -139,7 +141,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
           )}
 
           {/* Features list */}
-          <Text style={s.featuresLabel}>PREMIUM INNIHELDUR</Text>
+          <Text style={s.featuresLabel}>{t('paywall_includes')}</Text>
           <View style={s.featuresCard}>
             {PREMIUM_FEATURES.map((f, i) => (
               <View key={i} style={[s.featureRow, i === PREMIUM_FEATURES.length - 1 && s.featureRowLast]}>
@@ -159,15 +161,15 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
           <View style={s.comparisonCard}>
             <View style={s.comparisonRow}>
               <Text style={s.comparisonLabel}></Text>
-              <Text style={s.comparisonFree}>Ókeypis</Text>
-              <Text style={s.comparisonPrem}>Premium</Text>
+              <Text style={s.comparisonFree}>{t('paywall_free_col')}</Text>
+              <Text style={s.comparisonPrem}>{t('paywall_title')}</Text>
             </View>
             {[
-              { label: 'Íslenskar deildir', free: '✓',    prem: '✓' },
-              { label: 'Prem / CL',         free: '✕',    prem: '✓' },
-              { label: 'Deildir',           free: '2',    prem: '∞' },
-              { label: 'Strava',            free: '✕',    prem: '✓' },
-              { label: 'Sérsniðið',         free: '✕',    prem: '✓' },
+              { label: t('paywall_cmp_icelandic'), free: '✓', prem: '✓' },
+              { label: t('paywall_cmp_intl'),      free: '✕', prem: '✓' },
+              { label: t('paywall_cmp_leagues'),   free: '2', prem: '∞' },
+              { label: 'Strava',                   free: '✕', prem: '✓' },
+              { label: t('paywall_cmp_custom'),    free: '✕', prem: '✓' },
             ].map((row, i) => (
               <View key={i} style={s.comparisonRow}>
                 <Text style={s.comparisonLabel}>{row.label}</Text>
@@ -188,11 +190,11 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
                 ? <ActivityIndicator color="#FFC845" />
                 : <>
                     <Text style={s.priceAmount}>{price}</Text>
-                    <Text style={s.pricePeriod}> / mánuð</Text>
+                    <Text style={s.pricePeriod}> {t('paywall_month')}</Text>
                   </>
               }
             </View>
-            <Text style={s.priceSub}>Hægt að segja upp hvenær sem er</Text>
+            <Text style={s.priceSub}>{t('paywall_cancel_anytime')}</Text>
           </View>
 
           <TouchableOpacity
@@ -204,7 +206,7 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
             {purchasing
               ? <ActivityIndicator color="#000" />
               : <>
-                  <Text style={s.purchaseBtnText}>Fá Premium — {price}/mán 👑</Text>
+                  <Text style={s.purchaseBtnText}>{t('paywall_cta')} — {price}{t('paywall_month')} 👑</Text>
                 </>
             }
           </TouchableOpacity>
@@ -213,18 +215,18 @@ export default function PaywallScreen({ feature = 'general', onSuccess, onClose 
           <TouchableOpacity style={s.restoreBtn} onPress={handleRestore} disabled={restoring}>
             {restoring
               ? <ActivityIndicator color="#7a9aaa" size="small" />
-              : <Text style={s.restoreBtnText}>Endurheimta fyrri kaup</Text>
+              : <Text style={s.restoreBtnText}>{t('paywall_restore_prev')}</Text>
             }
           </TouchableOpacity>
 
           <Text style={s.legal}>
-            Áskrift er endurnýjuð sjálfkrafa um {price} á mánuði nema hún sé sagt upp minnst 24 klukkustundum fyrir lok núverandi tímabils. Hægt er að stjórna áskrift og slökkva á sjálfvirkri endurnýjun í reikningsstillingum eftir kaup.{' '}
-            <Text style={s.legalLink} onPress={() => Linking.openURL('https://fitbet.is/privacy')}>
-              Persónuvernd
+            {t('paywall_legal').replace('{price}', price)}{' '}
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://fitbet.fit/privacy')}>
+              {t('paywall_privacy')}
             </Text>
             {' · '}
-            <Text style={s.legalLink} onPress={() => Linking.openURL('https://fitbet.is/terms')}>
-              Skilmálar
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://fitbet.fit/terms')}>
+              {t('paywall_terms')}
             </Text>
           </Text>
 

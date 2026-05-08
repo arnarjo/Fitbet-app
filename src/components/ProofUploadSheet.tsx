@@ -248,60 +248,62 @@ export default function ProofUploadSheet({
         {/* ── STATE: idle ── */}
         {uploadState === 'idle' && (
           <View style={s.body}>
-            {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected ? (
-              <View style={s.stravaAutoBox}>
-                <Text style={s.stravaAutoEmoji}>🟠</Text>
-                <Text style={s.stravaAutoTitle}>Strava sér um þetta sjálfkrafa</Text>
-                <Text style={s.stravaAutoSub}>
-                  Opnaðu appið eftir æfinguna og við finnum hana sjálfkrafa.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={s.sectionLabel}>VELDU TEGUND SÖNNUNAR</Text>
+            <>
+              {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected && (
+                <View style={s.stravaAutoBox}>
+                  <Text style={s.stravaAutoEmoji}>🟠</Text>
+                  <Text style={s.stravaAutoTitle}>Strava greinir sjálfkrafa</Text>
+                  <Text style={s.stravaAutoSub}>
+                    Opnaðu appið eftir æfinguna — við finnum hana og sendum til staðfestingar hjá vini.
+                  </Text>
+                </View>
+              )}
 
-                <TouchableOpacity style={s.optionRow} onPress={openCamera} activeOpacity={0.8}>
-                  <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
-                    <Text style={s.optionEmoji}>📷</Text>
-                  </View>
-                  <View style={s.optionInfo}>
-                    <Text style={s.optionTitle}>Taka mynd núna</Text>
-                    <Text style={s.optionSub}>Opnar myndavél beint</Text>
-                  </View>
-                  <Text style={s.optionArrow}>›</Text>
-                </TouchableOpacity>
+              <Text style={[s.sectionLabel, { marginTop: STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && stravaConnected ? 16 : 0 }]}>
+                VELDU TEGUND SÖNNUNAR
+              </Text>
 
-                <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('photo')} activeOpacity={0.8}>
-                  <View style={[s.optionIcon, { backgroundColor: 'rgba(61,139,255,0.12)' }]}>
-                    <Text style={s.optionEmoji}>🖼</Text>
-                  </View>
-                  <View style={s.optionInfo}>
-                    <Text style={s.optionTitle}>Velja mynd úr safni</Text>
-                    <Text style={s.optionSub}>Myndir á símanum þínum</Text>
-                  </View>
-                  <Text style={s.optionArrow}>›</Text>
-                </TouchableOpacity>
+              <TouchableOpacity style={s.optionRow} onPress={openCamera} activeOpacity={0.8}>
+                <View style={[s.optionIcon, { backgroundColor: 'rgba(0,229,160,0.12)' }]}>
+                  <Text style={s.optionEmoji}>📷</Text>
+                </View>
+                <View style={s.optionInfo}>
+                  <Text style={s.optionTitle}>Taka mynd núna</Text>
+                  <Text style={s.optionSub}>Opnar myndavél beint</Text>
+                </View>
+                <Text style={s.optionArrow}>›</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('video')} activeOpacity={0.8}>
-                  <View style={[s.optionIcon, { backgroundColor: 'rgba(255,201,64,0.12)' }]}>
-                    <Text style={s.optionEmoji}>🎬</Text>
-                  </View>
-                  <View style={s.optionInfo}>
-                    <Text style={s.optionTitle}>Hlaða upp myndband</Text>
-                    <Text style={s.optionSub}>Hámark 60 sekúndur</Text>
-                  </View>
-                  <Text style={s.optionArrow}>›</Text>
-                </TouchableOpacity>
+              <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('photo')} activeOpacity={0.8}>
+                <View style={[s.optionIcon, { backgroundColor: 'rgba(61,139,255,0.12)' }]}>
+                  <Text style={s.optionEmoji}>🖼</Text>
+                </View>
+                <View style={s.optionInfo}>
+                  <Text style={s.optionTitle}>Velja mynd úr safni</Text>
+                  <Text style={s.optionSub}>Myndir á símanum þínum</Text>
+                </View>
+                <Text style={s.optionArrow}>›</Text>
+              </TouchableOpacity>
 
-                {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && !stravaConnected && (
-                  <View style={s.stravaPrompt}>
-                    <Text style={s.stravaPromptText}>
-                      💡 Tengdu Strava til að fá sjálfvirka samþykkt
-                    </Text>
-                  </View>
-                )}
-              </>
-            )}
+              <TouchableOpacity style={s.optionRow} onPress={() => openLibrary('video')} activeOpacity={0.8}>
+                <View style={[s.optionIcon, { backgroundColor: 'rgba(255,201,64,0.12)' }]}>
+                  <Text style={s.optionEmoji}>🎬</Text>
+                </View>
+                <View style={s.optionInfo}>
+                  <Text style={s.optionTitle}>Hlaða upp myndband</Text>
+                  <Text style={s.optionSub}>Hámark 60 sekúndur</Text>
+                </View>
+                <Text style={s.optionArrow}>›</Text>
+              </TouchableOpacity>
+
+              {STRAVA_TRACKABLE_EXERCISES.includes(challenge.exercise) && !stravaConnected && (
+                <View style={s.stravaPrompt}>
+                  <Text style={s.stravaPromptText}>
+                    💡 Tengdu Strava til að fá sjálfvirka greiningu
+                  </Text>
+                </View>
+              )}
+            </>
           </View>
         )}
 

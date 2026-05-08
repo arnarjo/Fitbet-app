@@ -6,6 +6,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import FloatingChallengeButton from './src/components/FloatingChallengeButton';
 import { supabase } from './src/lib/supabase';
 import { LanguageProvider } from './src/hooks/useLanguage';
+import { setupRevenueCat } from './src/lib/revenuecat';
 import type { Session } from '@supabase/supabase-js';
 
 function AppInner() {
@@ -15,12 +16,14 @@ function AppInner() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user?.id) setupRevenueCat(session.user.id);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user?.id) setupRevenueCat(session.user.id);
     });
 
     return () => subscription.unsubscribe();

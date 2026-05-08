@@ -53,41 +53,34 @@ serve(async (req) => {
       });
     }
 
-    // 1. Get user's push token
-    const { data: tokenRow, error: tokenError } = await sb
+    // 1. Get ALL active push tokens for this user
+    const { data: tokenRows, error: tokenError } = await sb
       .from('push_tokens')
       .select('token')
       .eq('user_id', user_id)
-      .eq('active', true)
-      .single();
+      .eq('active', true);
 
-    if (tokenError || !tokenRow?.token) {
-      // No token — store notification only, don't fail
-      await sb.from('notifications').insert({
-        user_id,
-        type: data?.type ?? 'general',
-        title,
-        body,
-        data: data ?? null,
-      });
-      return new Response(JSON.stringify({ status: 'no_token', stored: true }), {
+    if (tokenError || !tokenRows?.length) {
+      return new Response(JSON.stringify({ status: 'no_token' }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 2. Build Expo push message
-    const message: ExpoPushMessage = {
-      to: tokenRow.token,
+    const channelId = getChannelId(data?.type as string);
+
+    // 2. Build one Expo push message per token (supports multi-device users)
+    const messages: ExpoPushMessage[] = tokenRows.map(({ token }) => ({
+      to: token,
       title,
       body,
       data,
       badge,
       sound,
       priority: 'high',
-      channelId: getChannelId(data?.type as string),
-    };
+      channelId,
+    }));
 
-    // 3. Send to Expo Push Service
+    // 3. Send to Expo Push Service (accepts array)
     const expoRes = await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: {
@@ -95,31 +88,28 @@ serve(async (req) => {
         'Accept-Encoding': 'gzip, deflate',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(message),
+      body: JSON.stringify(messages),
     });
 
     const expoData = await expoRes.json();
 
-    // 4. Check for errors from Expo
-    const ticket = expoData?.data;
-    if (ticket?.status === 'error') {
-      console.error('Expo push error:', ticket.details);
-      // If token invalid, deactivate it
-      if (ticket.details?.error === 'DeviceNotRegistered') {
-        await sb.from('push_tokens').update({ active: false }).eq('token', tokenRow.token);
-      }
-    }
+    // 4. Deactivate any invalid tokens reported by Expo
+    const tickets: Array<{ status: string; details?: { error?: string } }> =
+      Array.isArray(expoData?.data) ? expoData.data : [expoData?.data];
 
-    // 5. Store notification in DB
-    await sb.from('notifications').insert({
-      user_id,
-      type: data?.type ?? 'general',
-      title,
-      body,
-      data: data ?? null,
-    });
+    await Promise.all(
+      tokenRows.map(async ({ token }, i) => {
+        const ticket = tickets[i];
+        if (ticket?.status === 'error') {
+          console.error('Expo push error for token', token.slice(0, 20), ticket.details);
+          if (ticket.details?.error === 'DeviceNotRegistered') {
+            await sb.from('push_tokens').update({ active: false }).eq('token', token);
+          }
+        }
+      }),
+    );
 
-    return new Response(JSON.stringify({ status: 'sent', ticket }), {
+    return new Response(JSON.stringify({ status: 'sent', tickets }), {
       headers: { 'Content-Type': 'application/json' },
     });
 

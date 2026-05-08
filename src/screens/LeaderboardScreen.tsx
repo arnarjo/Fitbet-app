@@ -5,8 +5,10 @@ import {
   RefreshControl, StatusBar, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import type { LeaderboardEntry } from '../types/database';
 
 type Tab = 'global' | 'friends';
@@ -20,6 +22,8 @@ function getInitials(name: string) {
 
 export default function LeaderboardScreen() {
   const { profile } = useAuth();
+  const navigation = useNavigation<any>();
+  const { t } = useLanguage();
   const [tab, setTab]               = useState<Tab>('global');
   const [global, setGlobal]         = useState<LeaderboardEntry[]>([]);
   const [friendsBoard, setFriendsBoard] = useState<LeaderboardEntry[]>([]);
@@ -92,10 +96,10 @@ export default function LeaderboardScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={s.header}>
-        <Text style={s.headerTitle}>Stigatafla</Text>
+        <Text style={s.headerTitle}>{t('lb_title')}</Text>
         {myRank > 0 && (
           <View style={s.myRankPill}>
-            <Text style={s.myRankText}>#{myRank} staður</Text>
+            <Text style={s.myRankText}>#{myRank}</Text>
           </View>
         )}
       </View>
@@ -106,14 +110,14 @@ export default function LeaderboardScreen() {
           style={[s.tab, tab === 'global' && s.tabActive]}
           onPress={() => setTab('global')}
         >
-          <Text style={[s.tabText, tab === 'global' && s.tabTextActive]}>Heimur</Text>
+          <Text style={[s.tabText, tab === 'global' && s.tabTextActive]}>{t('lb_global')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.tab, tab === 'friends' && s.tabActive]}
           onPress={() => setTab('friends')}
         >
           <Text style={[s.tabText, tab === 'friends' && s.tabTextActive]}>
-            Vinir ({friendsBoard.length})
+            {t('lb_friends')} ({friendsBoard.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -139,7 +143,7 @@ export default function LeaderboardScreen() {
               <Text style={s.podiumMedal}>🥈</Text>
               <Text style={s.podiumName} numberOfLines={1}>{top3[1]?.full_name?.split(' ')[0] ?? top3[1]?.username}</Text>
               <View style={[s.podiumPts, { backgroundColor: '#c0c0c022' }]}>
-                <Text style={[s.podiumPtsText, { color: '#c0c0c0' }]}>{top3[1]?.total_points} stig</Text>
+                <Text style={[s.podiumPtsText, { color: '#c0c0c0' }]}>{top3[1]?.total_points} {t('lb_points')}</Text>
               </View>
               <View style={[s.podiumBlock, s.podiumBlock2]} />
             </View>
@@ -184,8 +188,8 @@ export default function LeaderboardScreen() {
         {/* ── My position highlight ── */}
         {myEntry && myRank > 3 && (
           <View style={s.myRow}>
-            <Text style={s.myRowLabel}>Staða þín</Text>
-            <BoardRow entry={myEntry} rank={myRank} isMe highlight />
+            <Text style={s.myRowLabel}>{t('lb_my_position')}</Text>
+            <BoardRow entry={myEntry} rank={myRank} isMe highlight meLabel={t('lb_you')} winsLabel={t('lb_wins')} lossesLabel={t('lb_losses')} />
           </View>
         )}
 
@@ -198,6 +202,9 @@ export default function LeaderboardScreen() {
                 entry={entry}
                 rank={showPodium ? idx + 4 : idx + 1}
                 isMe={entry.id === profile?.id}
+                meLabel={t('lb_you')}
+                winsLabel={t('lb_wins')}
+                lossesLabel={t('lb_losses')}
               />
             ))}
           </View>
@@ -205,11 +212,21 @@ export default function LeaderboardScreen() {
 
         {displayBoard.length === 0 && !loading && (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>🏆</Text>
-            <Text style={s.emptyTitle}>Engar færslur ennþá</Text>
-            <Text style={s.emptySub}>
-              {tab === 'friends' ? 'Bættu við vinum í Prófíl flipanum' : 'Farðu og veðjaðu!'}
+            <Text style={s.emptyIcon}>{tab === 'friends' ? '👥' : '🏆'}</Text>
+            <Text style={s.emptyTitle}>
+              {tab === 'friends' ? t('lb_no_friends') : t('lb_empty')}
             </Text>
+            <Text style={s.emptySub}>
+              {tab === 'friends' ? t('lb_no_friends_sub') : t('lb_empty_sub')}
+            </Text>
+            {tab === 'friends' && (
+              <TouchableOpacity
+                style={s.emptyBtn}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Text style={s.emptyBtnText}>{t('lb_go_profile')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -220,8 +237,9 @@ export default function LeaderboardScreen() {
 }
 
 // ── BoardRow sub-component ───────────────────────────────────
-function BoardRow({ entry, rank, isMe, highlight }: {
+function BoardRow({ entry, rank, isMe, highlight, meLabel = 'You', winsLabel = 'W', lossesLabel = 'L' }: {
   entry: LeaderboardEntry; rank: number; isMe: boolean; highlight?: boolean;
+  meLabel?: string; winsLabel?: string; lossesLabel?: string;
 }) {
   const color = AVATAR_COLORS[(rank - 1) % AVATAR_COLORS.length];
   return (
@@ -237,9 +255,9 @@ function BoardRow({ entry, rank, isMe, highlight }: {
       <View style={s.boardInfo}>
         <Text style={s.boardName}>
           {entry.full_name ?? entry.username}
-          {isMe && <Text style={s.boardMeTag}> (þú)</Text>}
+          {isMe && <Text style={s.boardMeTag}> ({meLabel})</Text>}
         </Text>
-        <Text style={s.boardSub}>{entry.total_wins}S · {entry.total_losses}T</Text>
+        <Text style={s.boardSub}>{entry.total_wins}{winsLabel} · {entry.total_losses}{lossesLabel}</Text>
       </View>
       <Text style={s.boardPts}>{entry.total_points}</Text>
     </View>
@@ -329,6 +347,12 @@ const s = StyleSheet.create({
   boardPts: { fontSize: 18, fontWeight: '900', color: '#00e5a0' },
 
   emptyState: { alignItems: 'center', paddingTop: 64, gap: 10 },
+  emptyBtn: {
+    marginTop: 8, backgroundColor: 'rgba(33,165,106,0.12)',
+    borderWidth: 1, borderColor: 'rgba(33,165,106,0.3)',
+    borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10,
+  },
+  emptyBtnText: { color: '#21A56A', fontWeight: '700', fontSize: 14 },
   emptyIcon: { fontSize: 44 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: '#f0f0f8' },
   emptySub: { fontSize: 13, color: '#5a5a72', textAlign: 'center', paddingHorizontal: 24 },

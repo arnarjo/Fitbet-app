@@ -83,8 +83,11 @@ export default function StravaConnect({ onConnected }: Props) {
             >
               <Text style={s.activityIcon}>
                 {act.sport_type === 'Run' || act.sport_type === 'VirtualRun' ? '🏃'
-                  : act.sport_type === 'Ride' || act.sport_type === 'VirtualRide' ? '🚴'
-                  : act.sport_type === 'Walk' ? '🚶' : '⚡'}
+                  : act.sport_type === 'Ride' || act.sport_type === 'VirtualRide' || act.sport_type === 'EBikeRide' ? '🚴'
+                  : act.sport_type === 'Walk' ? '🚶'
+                  : act.sport_type === 'Swim' ? '🏊'
+                  : act.sport_type === 'Rowing' ? '🚣'
+                  : '⚡'}
               </Text>
               <View style={s.activityInfo}>
                 <Text style={s.activityName} numberOfLines={1}>{act.name}</Text>
@@ -106,7 +109,7 @@ export default function StravaConnect({ onConnected }: Props) {
 
           <View style={s.infoBox}>
             <Text style={s.infoText}>
-              ⚡ Þegar þú klárar hlaup eða hjólreiðar á Strava, staðfestir FitBet áskorunina sjálfkrafa — engin mynd þarf.
+              ⚡ Þegar þú klárar hlaup, hjólreiðar, sund, rowing eða interval run á Strava, staðfestir FitBet áskorunina sjálfkrafa — engin mynd þarf.
             </Text>
           </View>
         </>
@@ -118,6 +121,9 @@ export default function StravaConnect({ onConnected }: Props) {
           {[
             'Hlaup staðfest sjálfkrafa ✓',
             'Hjólreiðar staðfestar sjálfkrafa ✓',
+            'Sund staðfest sjálfkrafa ✓',
+            'Rowing staðfest sjálfkrafa ✓',
+            'Interval run staðfest sjálfkrafa ✓',
             'Engin sönnunarmynd þarf ✓',
             'Virkar með Apple Watch og Garmin ✓',
           ].map(b => (

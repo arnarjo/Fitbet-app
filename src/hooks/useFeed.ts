@@ -181,5 +181,5 @@ export function buildFeedMessage(event: FeedEvent, myName: string): {
   };
 
   const cfg = map[event.type] ?? { msg: event.body, color: '#9090aa', emoji: '📣' };
-  return { actor, ...cfg };
+  return { actor, message: cfg.msg, color: cfg.color, emoji: cfg.emoji };
 }

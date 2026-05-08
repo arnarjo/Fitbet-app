@@ -3,11 +3,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, RefreshControl, StatusBar, Alert, Modal,
-  ActivityIndicator,
+  ActivityIndicator, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
 import type { League, LeagueMember, LeaderboardEntry } from '../types/database';
 
 type LeagueTab = 'members' | 'bets' | 'board';
@@ -25,6 +26,7 @@ function avatarColor(id: string) {
 
 export default function LeaguesScreen() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const userId = profile?.id ?? '';
 
   const [leagues, setLeagues]         = useState<League[]>([]);
@@ -105,15 +107,16 @@ export default function LeaguesScreen() {
 
   // ── Create league ────────────────────────────────────────
   async function createLeague() {
-    if (!newName.trim()) { Alert.alert('Villa', 'Sláðu inn nafn á deildina'); return; }
+    if (!newName.trim()) { Alert.alert(t('common_error'), t('leagues_enter_name')); return; }
     setCreating(true);
+    const invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const { data: lg, error } = await supabase
       .from('leagues')
-      .insert({ name: newName.trim(), type: newType, created_by: userId })
+      .insert({ name: newName.trim(), type: newType, created_by: userId, invite_code })
       .select()
       .single();
 
-    if (error || !lg) { Alert.alert('Villa', error?.message); setCreating(false); return; }
+    if (error || !lg) { Alert.alert(t('common_error'), error?.message); setCreating(false); return; }
 
     // Add creator as admin member
     await supabase.from('league_members').insert({
@@ -130,7 +133,7 @@ export default function LeaguesScreen() {
 
   // ── Join league ──────────────────────────────────────────
   async function joinLeague() {
-    if (!inviteCode.trim()) { Alert.alert('Villa', 'Sláðu inn boðkóðann'); return; }
+    if (!inviteCode.trim()) { Alert.alert(t('common_error'), t('leagues_enter_code')); return; }
     setJoining(true);
 
     const { data: lg } = await supabase
@@ -140,7 +143,7 @@ export default function LeaguesScreen() {
       .single();
 
     if (!lg) {
-      Alert.alert('Kóði ekki fundinn', 'Athugaðu kóðann og reyndu aftur.');
+      Alert.alert(t('leagues_code_missing'), t('leagues_code_missing_msg'));
       setJoining(false);
       return;
     }
@@ -154,7 +157,7 @@ export default function LeaguesScreen() {
       .single();
 
     if (existing) {
-      Alert.alert('Þú ert nú þegar í þessari deild');
+      Alert.alert(t('leagues_already_member'));
       setJoining(false);
       return;
     }
@@ -173,10 +176,10 @@ export default function LeaguesScreen() {
 
   // ── Leave league ─────────────────────────────────────────
   async function leaveLeague(leagueId: string, name: string) {
-    Alert.alert(`Fara úr ${name}?`, '', [
-      { text: 'Hætta við', style: 'cancel' },
+    Alert.alert(`${t('leagues_leave_q')} ${name}?`, '', [
+      { text: t('common_cancel'), style: 'cancel' },
       {
-        text: 'Fara', style: 'destructive',
+        text: t('leagues_leave'), style: 'destructive',
         onPress: async () => {
           await supabase.from('league_members')
             .delete()
@@ -200,13 +203,13 @@ export default function LeaguesScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={s.header}>
-        <Text style={s.headerTitle}>Deildir</Text>
+        <Text style={s.headerTitle}>{t('leagues_title')}</Text>
         <View style={s.headerBtns}>
           <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModal(true)}>
-            <Text style={s.joinBtnText}>Ganga í</Text>
+            <Text style={s.joinBtnText}>{t('leagues_join')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.createBtn} onPress={() => setCreateModal(true)}>
-            <Text style={s.createBtnText}>+ Ný deild</Text>
+            <Text style={s.createBtnText}>{t('leagues_create_new')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -216,10 +219,10 @@ export default function LeaguesScreen() {
       ) : leagues.length === 0 ? (
         <View style={s.emptyFull}>
           <Text style={s.emptyIcon}>🏅</Text>
-          <Text style={s.emptyTitle}>Engar deildir</Text>
-          <Text style={s.emptySub}>Búðu til deild eða gakktu í með boðkóða</Text>
+          <Text style={s.emptyTitle}>{t('leagues_no_leagues')}</Text>
+          <Text style={s.emptySub}>{t('leagues_no_leagues_sub')}</Text>
           <TouchableOpacity style={s.emptyBtn} onPress={() => setCreateModal(true)}>
-            <Text style={s.emptyBtnText}>+ Búa til deild</Text>
+            <Text style={s.emptyBtnText}>{t('leagues_create_new')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -256,33 +259,32 @@ export default function LeaguesScreen() {
                   <View>
                     <Text style={s.leagueInfoName}>{selectedLeague.name}</Text>
                     <Text style={s.leagueInfoType}>
-                      {selectedLeague.type === 'vinahópur' ? '👥 Vinahópur' : '💼 Vinnustaður'}
-                      {' · '}{members.length} meðlimir
+                      {selectedLeague.type === 'vinahópur' ? `👥 ${t('leagues_friends_type')}` : `💼 ${t('leagues_work_type')}`}
+                      {' · '}{members.length} {t('leagues_members_count')}
                     </Text>
                   </View>
                 </View>
                 <TouchableOpacity
                   style={s.inviteBtn}
-                  onPress={() => Alert.alert(
-                    'Boðkóði',
-                    `Deilt kóðinn: ${selectedLeague.invite_code?.toUpperCase()}\n\nGefðu vinum þínum þennan kóða til að ganga í deildina.`,
-                    [{ text: 'Í lagi' }]
-                  )}
+                  onPress={() => Share.share({
+                    message: `Gakktu í deildina "${selectedLeague.name}" á FitBet!\n\nBoðkóði: ${selectedLeague.invite_code?.toUpperCase()}`,
+                    title: 'Boða í FitBet deild',
+                  })}
                 >
-                  <Text style={s.inviteBtnText}>🔗 Boða</Text>
+                  <Text style={s.inviteBtnText}>🔗 {t('leagues_share')}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Internal tabs */}
               <View style={s.tabRow}>
-                {(['board', 'members'] as LeagueTab[]).map(t => (
+                {(['board', 'members'] as LeagueTab[]).map(tab => (
                   <TouchableOpacity
-                    key={t}
-                    style={[s.tab, leagueTab === t && s.tabActive]}
-                    onPress={() => setLeagueTab(t)}
+                    key={tab}
+                    style={[s.tab, leagueTab === tab && s.tabActive]}
+                    onPress={() => setLeagueTab(tab)}
                   >
-                    <Text style={[s.tabText, leagueTab === t && s.tabTextActive]}>
-                      {t === 'board' ? 'Stigatafla' : `Meðlimir (${members.length})`}
+                    <Text style={[s.tabText, leagueTab === tab && s.tabTextActive]}>
+                      {tab === 'board' ? t('leagues_board') : `${t('leagues_members')} (${members.length})`}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -310,11 +312,11 @@ export default function LeaguesScreen() {
                         <View style={s.boardInfo}>
                           <Text style={s.boardName}>
                             {p?.full_name ?? p?.username}
-                            {isMe && <Text style={{ color: '#21A56A' }}> (þú)</Text>}
+                            {isMe && <Text style={{ color: '#21A56A' }}> ({t('lb_you')})</Text>}
                             {item.member.role === 'admin' && <Text style={{ color: '#FFC845' }}> ★</Text>}
                           </Text>
                           <Text style={s.boardSub}>
-                            {entry?.total_wins ?? 0}S · {entry?.total_losses ?? 0}T
+                            {entry?.total_wins ?? 0}{t('lb_wins')} · {entry?.total_losses ?? 0}{t('lb_losses')}
                           </Text>
                         </View>
                         <Text style={s.boardPts}>{entry?.total_points ?? 0}</Text>
@@ -341,13 +343,13 @@ export default function LeaguesScreen() {
                         <View style={s.boardInfo}>
                           <Text style={s.boardName}>
                             {p?.full_name ?? p?.username}
-                            {isMe && <Text style={{ color: '#21A56A' }}> (þú)</Text>}
+                            {isMe && <Text style={{ color: '#21A56A' }}> ({t('lb_you')})</Text>}
                           </Text>
                           <Text style={s.boardSub}>@{p?.username}</Text>
                         </View>
                         {item.member.role === 'admin'
                           ? <View style={s.adminBadge}><Text style={s.adminBadgeText}>★ Admin</Text></View>
-                          : <View style={s.memberBadge}><Text style={s.memberBadgeText}>Meðlimur</Text></View>
+                          : <View style={s.memberBadge}><Text style={s.memberBadgeText}>{t('leagues_member')}</Text></View>
                         }
                       </View>
                     );
@@ -360,7 +362,7 @@ export default function LeaguesScreen() {
                 style={s.leaveBtn}
                 onPress={() => leaveLeague(selectedLeague.id, selectedLeague.name)}
               >
-                <Text style={s.leaveBtnText}>Fara úr deild</Text>
+                <Text style={s.leaveBtnText}>{t('leagues_leave')}</Text>
               </TouchableOpacity>
 
               <View style={{ height: 24 }} />
@@ -373,35 +375,35 @@ export default function LeaguesScreen() {
       <Modal visible={createModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCreateModal(false)}>
         <SafeAreaView style={s.modal}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Ný deild</Text>
+            <Text style={s.modalTitle}>{t('leagues_create_title')}</Text>
             <TouchableOpacity onPress={() => setCreateModal(false)}>
               <Text style={s.modalClose}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView style={s.modalBody} keyboardShouldPersistTaps="handled">
-            <Text style={s.fieldLabel}>NAFN DEILDAR</Text>
+            <Text style={s.fieldLabel}>{t('leagues_name_label')}</Text>
             <TextInput
               style={s.textInput}
-              placeholder="t.d. Vinarnir eða Vinnufélagar"
+              placeholder={t('leagues_name_ph')}
               placeholderTextColor="#2a4050"
               value={newName}
               onChangeText={setNewName}
             />
-            <Text style={s.fieldLabel}>TEGUND</Text>
+            <Text style={s.fieldLabel}>{t('leagues_type')}</Text>
             <View style={s.typeRow}>
               <TouchableOpacity
                 style={[s.typeBtn, newType === 'vinahópur' && s.typeBtnActive]}
                 onPress={() => setNewType('vinahópur')}
               >
                 <Text style={s.typeBtnIcon}>👥</Text>
-                <Text style={[s.typeBtnText, newType === 'vinahópur' && s.typeBtnTextActive]}>Vinahópur</Text>
+                <Text style={[s.typeBtnText, newType === 'vinahópur' && s.typeBtnTextActive]}>{t('leagues_friends_type')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.typeBtn, newType === 'vinnustaður' && s.typeBtnActive]}
                 onPress={() => setNewType('vinnustaður')}
               >
                 <Text style={s.typeBtnIcon}>💼</Text>
-                <Text style={[s.typeBtnText, newType === 'vinnustaður' && s.typeBtnTextActive]}>Vinnustaður</Text>
+                <Text style={[s.typeBtnText, newType === 'vinnustaður' && s.typeBtnTextActive]}>{t('leagues_work_type')}</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -410,7 +412,7 @@ export default function LeaguesScreen() {
             >
               {creating
                 ? <ActivityIndicator color="#000" />
-                : <Text style={s.submitBtnText}>Búa til deild 🏆</Text>
+                : <Text style={s.submitBtnText}>{t('leagues_create_btn')} 🏆</Text>
               }
             </TouchableOpacity>
           </ScrollView>
@@ -421,30 +423,30 @@ export default function LeaguesScreen() {
       <Modal visible={joinModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setJoinModal(false)}>
         <SafeAreaView style={s.modal}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Ganga í deild</Text>
+            <Text style={s.modalTitle}>{t('leagues_join')}</Text>
             <TouchableOpacity onPress={() => setJoinModal(false)}>
               <Text style={s.modalClose}>✕</Text>
             </TouchableOpacity>
           </View>
           <View style={s.modalBody}>
-            <Text style={s.fieldLabel}>BOÐKÓÐI</Text>
+            <Text style={s.fieldLabel}>{t('leagues_code_label')}</Text>
             <TextInput
               style={s.textInput}
-              placeholder="t.d. abc12345"
+              placeholder={t('leagues_code_ph')}
               placeholderTextColor="#2a4050"
               value={inviteCode}
               onChangeText={setInviteCode}
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={s.fieldHint}>Fáðu kóðann frá þeim sem stofnaði deildina</Text>
+            <Text style={s.fieldHint}>{t('leagues_code_hint')}</Text>
             <TouchableOpacity
               style={[s.submitBtn, joining && { opacity: 0.6 }]}
               onPress={joinLeague} disabled={joining}
             >
               {joining
                 ? <ActivityIndicator color="#000" />
-                : <Text style={s.submitBtnText}>Ganga í deild →</Text>
+                : <Text style={s.submitBtnText}>{t('leagues_join_btn')} →</Text>
               }
             </TouchableOpacity>
           </View>

@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
-  Animated, ActivityIndicator, StatusBar,
+  Animated, ActivityIndicator, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +14,7 @@ import { supabase } from '../../lib/supabase';
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const { t, lang, setLang } = useLanguage();
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -47,16 +47,7 @@ export default function LoginScreen({ navigation }: Props) {
     const { error } = await signInWithGoogle();
     setLoading(false);
     if (error) {
-      Alert.alert('Villa', 'Innskráning með Google mistókst, reyndu aftur.');
-    }
-  }
-
-  async function handleFacebookLogin() {
-    setLoading(true);
-    const { error } = await signInWithFacebook();
-    setLoading(false);
-    if (error) {
-      Alert.alert('Villa', 'Innskráning með Facebook mistókst, reyndu aftur.');
+      Alert.alert('Google villa', String(error?.message ?? error));
     }
   }
 
@@ -175,25 +166,15 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={s.googleBtnText}>Halda áfram með Google</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={s.facebookBtn}
-            onPress={handleFacebookLogin}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={s.facebookIcon}>f</Text>
-            <Text style={s.facebookBtnText}>Halda áfram með Facebook</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={s.signupBtn} onPress={() => navigation.navigate('Signup')}>
             <Text style={s.signupBtnText}>{t('login_create')}</Text>
           </TouchableOpacity>
 
           <Text style={s.termsText}>
             {t('login_terms')}
-            <Text style={s.termsLink}>{t('login_terms_of_use')}</Text>
+            <Text style={s.termsLink} onPress={() => Linking.openURL('https://fitbet.fit/terms')}>{t('login_terms_of_use')}</Text>
             {t('login_and')}
-            <Text style={s.termsLink}>{t('login_privacy')}</Text>
+            <Text style={s.termsLink} onPress={() => Linking.openURL('https://fitbet.fit/privacy')}>{t('login_privacy')}</Text>
             {t('login_of_fitbet')}
           </Text>
 

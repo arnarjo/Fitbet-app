@@ -258,32 +258,29 @@ export async function tryAutoApproveChallenge(
 
   const stravaUrl = `https://www.strava.com/activities/${match.id}`;
 
-  // Submit Strava proof
+  // Submit Strava proof — goes through normal review flow (winner must still approve)
   const { error: proofError } = await supabase.from('challenge_proofs').insert({
     challenge_id:        challengeId,
     submitted_by:        userId,
     proof_type:          'strava',
     strava_activity_url: stravaUrl,
-    notes:               `Sjálfvirk Strava staðfesting — ${match.name} (${(match.distance / 1000).toFixed(1)} km)`,
-    status:              'approved',
-    reviewed_by:         userId,
+    notes:               `Strava: ${match.name} (${(match.distance / 1000).toFixed(1)} km)`,
   });
 
   if (proofError) return false;
 
-  // Update challenge to approved
+  // Mark challenge as submitted — winner still reviews
   await supabase.from('challenges').update({
-    status:              'approved',
-    strava_activity_id:  String(match.id),
-    completed_at:        new Date().toISOString(),
+    status:             'submitted',
+    strava_activity_id: String(match.id),
   }).eq('id', challengeId);
 
-  // Notify winner
+  // Notify winner to review
   await supabase.from('notifications').insert({
     user_id: winnerId,
-    type:    'challenge_approved',
-    title:   'Áskorun staðfest sjálfkrafa ⚡',
-    body:    'Strava staðfesti áskorunina sjálfkrafa.',
+    type:    'challenge_submitted',
+    title:   'Strava sönnun móttekin ⚡',
+    body:    'Strava greindi æfingu sjálfkrafa. Staðfestu eða hafnaðu.',
     data:    { challenge_id: challengeId, strava_activity_id: match.id },
   });
 

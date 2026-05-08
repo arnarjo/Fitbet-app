@@ -1,4 +1,3 @@
-// src/screens/SeasonScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
@@ -6,23 +5,18 @@ import {
   Dimensions, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import type { SeasonBet, Profile, Team } from '../types/database';
+import { LEAGUE_COLOR } from '../constants/leagues';
+import { useLanguage } from '../hooks/useLanguage';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// Exact league names as stored in DB
 const LEAGUES = [
   { key: 'Besta deild karla',  label: 'Besta deildin'  },
   { key: 'Lengjudeild karla',  label: 'Lengjudeildin'  },
 ];
-
-const LEAGUE_COLOR: Record<string, string> = {
-  'Besta deild karla': '#21A56A',
-  'Lengjudeild karla': '#47C4EE',
-};
 
 const EXERCISE_TYPES = [
   { exercise: 'hlaup',      emoji: '🏃', label: 'Hlaup',      unit: 'km',  amounts: [5, 10, 21, 42]       },
@@ -36,7 +30,7 @@ type ActiveTab = 'besta' | 'lengju' | 'mín';
 
 export default function SeasonScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const { t } = useLanguage();
 
   const [teamsByLeague, setTeamsByLeague]       = useState<Record<string, Team[]>>({});
   const [marketsByLeague, setMarketsByLeague]   = useState<Record<string, string>>({});
@@ -47,7 +41,6 @@ export default function SeasonScreen() {
   const [refreshing, setRefreshing]             = useState(false);
   const [activeTab, setActiveTab]               = useState<ActiveTab>('besta');
 
-  // Modal
   const [betModal, setBetModal]                 = useState(false);
   const [myTeam, setMyTeam]                     = useState<Team | null>(null);
   const [oppTeam, setOppTeam]                   = useState<Team | null>(null);
@@ -115,7 +108,6 @@ export default function SeasonScreen() {
     ) as Profile[];
     setFriends(list);
 
-    // Fetch friend bets for standings
     if (list.length > 0) {
       const friendIds = list.map(f => f.id);
       const { data: fb } = await supabase
@@ -147,7 +139,7 @@ export default function SeasonScreen() {
     const league = myTeam.league_name ?? '';
     const marketId = marketsByLeague[league];
     if (!marketId) {
-      Alert.alert('Markaður vantar', 'Enginn opinn markaður er í þessari deild. Hafðu samband við admin.');
+      Alert.alert(t('season_market_missing'), t('season_market_missing_msg'));
       return;
     }
     setSubmitting(true);
@@ -163,18 +155,28 @@ export default function SeasonScreen() {
       unit: selectedExercise.unit,
     }).select('id').single();
     if (!error) {
-      await supabase.from('notifications').insert({
-        user_id: selectedOpponent.id,
-        type: 'bet_received',
-        title: 'Tímabilsspá móttekin! 📅',
-        body: `${profile!.full_name ?? profile!.username} spáir: ${myTeam.name} endar ofar en ${oppTeam.name}.`,
-        data: { market_id: marketId },
-      });
+      await supabase.from('notifications').insert([
+        {
+          user_id: selectedOpponent.id,
+          type: 'season_bet_received',
+          title: 'Tímabilsspá móttekin! 📅',
+          body: `${profile!.full_name ?? profile!.username} spáir: ${myTeam.name} endar ofar en ${oppTeam.name}.`,
+          data: { type: 'season_bet_received', season_bet_id: betData?.id, market_id: marketId },
+        },
+        {
+          user_id: profile!.id,
+          type: 'season_bet_created',
+          title: 'Tímabilsspá send! 📅',
+          body: `Þú sendir tímabilsspá á ${selectedOpponent.full_name ?? selectedOpponent.username}. ${myTeam.name} á móti ${oppTeam.name}.`,
+          data: { type: 'season_bet_created', season_bet_id: betData?.id, market_id: marketId },
+        },
+      ]);
       setBetModal(false);
+      setActiveTab('mín');
       await fetchMyBets();
-      Alert.alert('Veðmál sent! 🏆', `Beiðni send til ${selectedOpponent.full_name ?? selectedOpponent.username}`);
+      Alert.alert(t('season_bet_sent'), `${t('season_bet_sent_msg')} ${selectedOpponent.full_name ?? selectedOpponent.username}`);
     } else {
-      Alert.alert('Villa', error.message);
+      Alert.alert(t('common_error'), error.message);
     }
     setSubmitting(false);
   }
@@ -186,13 +188,17 @@ export default function SeasonScreen() {
     : [];
   const accentColor = LEAGUE_COLOR[activeLeagueKey];
 
-  // Flat team lookup by ID
   const allTeams = Object.values(teamsByLeague).flat();
   const teamById: Record<string, string> = {};
   for (const t of allTeams) teamById[t.id] = t.name;
 
-  // Standings: combine my bets + friend bets, group by user
-  const allBets = [...myBets, ...friendBets];
+  // Standings: combine my bets + friend bets, deduplicate by id, group by user
+  const seenIds = new Set<string>();
+  const allBets = [...myBets, ...friendBets].filter(b => {
+    if (seenIds.has(b.id)) return false;
+    seenIds.add(b.id);
+    return true;
+  });
   const standingsMap: Record<string, { name: string; picks: { league: string; team: string }[] }> = {};
   for (const bet of allBets) {
     const isMe = bet.challenger_id === profile?.id;
@@ -215,13 +221,13 @@ export default function SeasonScreen() {
     <SafeAreaView style={s.container}>
       <StatusBar barStyle="light-content" />
       <View style={s.header}>
-        <Text style={s.headerTitle}>Tímabilsveðmál</Text>
+        <Text style={s.headerTitle}>{t('season_title')}</Text>
       </View>
 
       {/* Tabs */}
       <View style={s.tabRow}>
         {(['besta', 'lengju', 'mín'] as ActiveTab[]).map(tab => {
-          const label = tab === 'besta' ? 'Besta deildin' : tab === 'lengju' ? 'Lengjudeildin' : `Veðmál (${myBets.length})`;
+          const label = tab === 'besta' ? t('season_besta') : tab === 'lengju' ? t('season_lengju') : `${t('season_my_bets')} (${myBets.length})`;
           const color = tab === 'besta' ? '#21A56A' : tab === 'lengju' ? '#47C4EE' : '#FFC845';
           return (
             <TouchableOpacity
@@ -249,7 +255,7 @@ export default function SeasonScreen() {
             {/* Standings */}
             {standings.length > 0 && (
               <View style={s.section}>
-                <Text style={s.sectionTitle}>Spár vina</Text>
+                <Text style={s.sectionTitle}>{t('season_friend_picks')}</Text>
                 <View style={s.standingsCard}>
                   {standings.map((entry, i) => (
                     <View key={i} style={[s.standingsRow, i < standings.length - 1 && s.standingsBorder]}>
@@ -276,18 +282,33 @@ export default function SeasonScreen() {
               </View>
             )}
 
+            {/* Incoming pending bets */}
+            {myBets.some(b => b.status === 'pending' && b.opponent_id === profile?.id) && (
+              <>
+                <Text style={s.sectionTitle}>{t('season_awaiting')}</Text>
+                {myBets
+                  .filter(b => b.status === 'pending' && b.opponent_id === profile?.id)
+                  .map(bet => (
+                    <SeasonBetRow key={bet.id} bet={bet} myId={profile?.id ?? ''} onRefresh={fetchMyBets} />
+                  ))
+                }
+              </>
+            )}
+
             {/* My bets */}
-            <Text style={s.sectionTitle}>Veðmál mín</Text>
-            {myBets.length === 0 ? (
+            <Text style={s.sectionTitle}>{t('season_my_bets_title')}</Text>
+            {myBets.filter(b => !(b.status === 'pending' && b.opponent_id === profile?.id)).length === 0 ? (
               <View style={s.empty}>
                 <Text style={s.emptyIcon}>🎯</Text>
-                <Text style={s.emptyTitle}>Engin tímabilsveðmál</Text>
-                <Text style={s.emptySub}>Veldu lið í flipunum til vinstri</Text>
+                <Text style={s.emptyTitle}>{t('season_empty')}</Text>
+                <Text style={s.emptySub}>{t('season_empty_sub')}</Text>
               </View>
             ) : (
-              myBets.map(bet => (
-                <SeasonBetRow key={bet.id} bet={bet} myId={profile?.id ?? ''} />
-              ))
+              myBets
+                .filter(b => !(b.status === 'pending' && b.opponent_id === profile?.id))
+                .map(bet => (
+                  <SeasonBetRow key={bet.id} bet={bet} myId={profile?.id ?? ''} onRefresh={fetchMyBets} />
+                ))
             )}
           </>
 
@@ -297,15 +318,15 @@ export default function SeasonScreen() {
             {activeTeams.length === 0 ? (
               <View style={s.empty}>
                 <Text style={s.emptyIcon}>⚽</Text>
-                <Text style={s.emptyTitle}>Engin lið</Text>
-                <Text style={s.emptySub}>Lið hafa ekki verið skráð í þessa deild</Text>
+                <Text style={s.emptyTitle}>{t('season_no_teams')}</Text>
+                <Text style={s.emptySub}>{t('season_no_teams_sub')}</Text>
               </View>
             ) : (
               <>
-                <Text style={s.leagueHint}>Veldu liðið sem þú heldur að muni enda hærra</Text>
+                <Text style={s.leagueHint}>{t('season_hint')}</Text>
                 {!marketsByLeague[activeLeagueKey] && (
                   <View style={s.closedBanner}>
-                    <Text style={s.closedBannerText}>⏳ Veðmál eru ekki opin í þessari deild ennþá</Text>
+                    <Text style={s.closedBannerText}>{t('season_market_closed')}</Text>
                   </View>
                 )}
                 <View style={s.teamGrid}>
@@ -332,7 +353,7 @@ export default function SeasonScreen() {
       <Modal visible={betModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setBetModal(false)}>
         <SafeAreaView style={s.modal}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Tímabilsspá</Text>
+            <Text style={s.modalTitle}>{t('season_modal_title')}</Text>
             <TouchableOpacity onPress={() => setBetModal(false)}>
               <Text style={s.modalClose}>✕</Text>
             </TouchableOpacity>
@@ -341,7 +362,7 @@ export default function SeasonScreen() {
           {myTeam && (
             <ScrollView style={s.modalBody} keyboardShouldPersistTaps="handled">
               {/* My pick */}
-              <Text style={s.fieldLabel}>ÞÍN SPÁ</Text>
+              <Text style={s.fieldLabel}>{t('season_your_pick')}</Text>
               <View style={[s.myPickBox, { borderColor: (LEAGUE_COLOR[myTeam.league_name ?? ''] ?? '#21A56A') + '50' }]}>
                 <View style={s.myPickInner}>
                   <TeamLogo team={myTeam} accentColor={LEAGUE_COLOR[myTeam.league_name ?? ''] ?? '#21A56A'} size={44} />
@@ -349,13 +370,13 @@ export default function SeasonScreen() {
                     <Text style={[s.myPickTeam, { color: LEAGUE_COLOR[myTeam.league_name ?? ''] ?? '#21A56A' }]}>
                       {myTeam.name}
                     </Text>
-                    <Text style={s.myPickSub}>endar hærra í {myTeam.league_name}</Text>
+                    <Text style={s.myPickSub}>{t('season_finishes_higher')} {myTeam.league_name}</Text>
                   </View>
                 </View>
               </View>
 
               {/* Opponent team */}
-              <Text style={[s.fieldLabel, { marginTop: 4 }]}>Á MÓT HVAÐA LIÐI?</Text>
+              <Text style={[s.fieldLabel, { marginTop: 4 }]}>{t('season_vs_who')}</Text>
               <View style={s.teamGridModal}>
                 {oppTeams.map(team => (
                   <TouchableOpacity
@@ -377,41 +398,43 @@ export default function SeasonScreen() {
                 <View style={s.vsSummary}>
                   <Text style={s.vsSummaryText}>
                     <Text style={{ color: LEAGUE_COLOR[myTeam.league_name ?? ''] ?? '#21A56A', fontWeight: '800' }}>{myTeam.name}</Text>
-                    {' '}endar ofar en{' '}
+                    {' '}{t('season_finishes_above')}{' '}
                     <Text style={{ color: '#47C4EE', fontWeight: '800' }}>{oppTeam.name}</Text>
                   </Text>
                 </View>
               )}
 
               {/* Friend */}
-              <Text style={[s.fieldLabel, { marginTop: 8 }]}>GEGN HVERJUM?</Text>
+              <Text style={[s.fieldLabel, { marginTop: 8 }]}>{t('season_against')}</Text>
               {friends.length === 0 ? (
-                <Text style={s.noFriends}>Engir vinir — bættu við í Prófíl flipanum</Text>
+                <Text style={s.noFriends}>{t('season_no_friends')}</Text>
               ) : (
-                friends.map(f => (
-                  <TouchableOpacity
-                    key={f.id}
-                    style={[s.friendRow, selectedOpponent?.id === f.id && s.friendRowActive]}
-                    onPress={() => setSelectedOpponent(f)}
-                  >
-                    <View style={s.friendAvatar}>
-                      <Text style={s.friendAvatarText}>
-                        {(f.full_name ?? f.username ?? '?').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.friendName}>{f.full_name ?? f.username}</Text>
-                      <Text style={s.friendHandle}>@{f.username}</Text>
-                    </View>
-                    {selectedOpponent?.id === f.id && (
-                      <View style={s.friendCheck}><Text style={s.friendCheckText}>✓</Text></View>
-                    )}
-                  </TouchableOpacity>
-                ))
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.friendChipRow}>
+                  {friends.map(f => {
+                    const initials = (f.full_name ?? f.username ?? '?').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+                    const selected = selectedOpponent?.id === f.id;
+                    return (
+                      <TouchableOpacity
+                        key={f.id}
+                        style={[s.friendChip, selected && s.friendChipActive]}
+                        onPress={() => setSelectedOpponent(f)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[s.friendChipAvatar, selected && s.friendChipAvatarActive]}>
+                          <Text style={[s.friendChipInitials, selected && { color: '#071D2A' }]}>{initials}</Text>
+                        </View>
+                        <Text style={[s.friendChipName, selected && s.friendChipNameActive]} numberOfLines={1}>
+                          {f.full_name ?? f.username}
+                        </Text>
+                        {selected && <Text style={s.friendChipCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               )}
 
               {/* Exercise type */}
-              <Text style={[s.fieldLabel, { marginTop: 8 }]}>ÆFING EF TAP</Text>
+              <Text style={[s.fieldLabel, { marginTop: 8 }]}>{t('season_exercise')}</Text>
               <View style={s.challengeGrid}>
                 {EXERCISE_TYPES.map(ex => (
                   <TouchableOpacity
@@ -430,7 +453,7 @@ export default function SeasonScreen() {
               {/* Amount */}
               {selectedExercise && (
                 <>
-                  <Text style={[s.fieldLabel, { marginTop: 8 }]}>MAGN ({selectedExercise.unit.toUpperCase()})</Text>
+                  <Text style={[s.fieldLabel, { marginTop: 8 }]}>{t('season_amount')} ({selectedExercise.unit.toUpperCase()})</Text>
                   <View style={s.amountGrid}>
                     {selectedExercise.amounts.map(amt => (
                       <TouchableOpacity
@@ -454,7 +477,7 @@ export default function SeasonScreen() {
               >
                 {submitting
                   ? <ActivityIndicator color="#000" />
-                  : <Text style={s.submitBtnText}>Senda veðmál 🏆</Text>
+                  : <Text style={s.submitBtnText}>{t('season_send')}</Text>
                 }
               </TouchableOpacity>
             </ScrollView>
@@ -491,17 +514,20 @@ function TeamLogo({ team, accentColor, size }: { team: Team; accentColor: string
 }
 
 // ── SeasonBetRow ──────────────────────────────────────────────
-function SeasonBetRow({ bet, myId }: { bet: any; myId: string }) {
+function SeasonBetRow({ bet, myId, onRefresh }: { bet: any; myId: string; onRefresh?: () => Promise<void> }) {
+  const [responding, setResponding] = React.useState(false);
+  const { t } = useLanguage();
   const isChallenger = bet.challenger_id === myId;
-  const myPick  = isChallenger ? (bet.challenger_team?.name ?? bet.challenger_pick) : (bet.opponent_team?.name ?? bet.opponent_pick);
-  const hisPick = isChallenger ? (bet.opponent_team?.name  ?? bet.opponent_pick)    : (bet.challenger_team?.name ?? bet.challenger_pick);
+  const isIncoming   = bet.status === 'pending' && bet.opponent_id === myId;
+  const myTeamName  = isChallenger ? (bet.challenger_team?.name ?? '—') : (bet.opponent_team?.name ?? '—');
+  const hisTeamName = isChallenger ? (bet.opponent_team?.name  ?? '—') : (bet.challenger_team?.name ?? '—');
   const league  = bet.market?.league_name ?? '';
   const accent  = LEAGUE_COLOR[league] ?? '#21A56A';
   const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-    pending:  { label: 'Í bið',    color: '#FFC845', bg: 'rgba(255,200,69,0.1)'  },
-    accepted: { label: 'Virkt',    color: '#47C4EE', bg: 'rgba(71,196,238,0.1)'  },
-    settled:  { label: 'Gert upp', color: '#7a9aaa', bg: 'rgba(255,255,255,0.06)' },
-    declined: { label: 'Hafnað',   color: '#ff4a6e', bg: 'rgba(255,74,110,0.1)'  },
+    pending:  { label: t('season_pending'),  color: '#FFC845', bg: 'rgba(255,200,69,0.12)'  },
+    accepted: { label: t('season_active'),   color: '#47C4EE', bg: 'rgba(71,196,238,0.12)'  },
+    settled:  { label: t('season_settled'),  color: '#7a9aaa', bg: 'rgba(255,255,255,0.06)' },
+    declined: { label: t('season_declined'), color: '#ff4a6e', bg: 'rgba(255,74,110,0.12)'  },
   };
   const st = statusMap[bet.status] ?? statusMap.pending;
   const won = bet.winner_id === myId;
@@ -509,24 +535,90 @@ function SeasonBetRow({ bet, myId }: { bet: any; myId: string }) {
   const oppName = isChallenger
     ? (bet.opponent?.full_name ?? bet.opponent?.username ?? '?')
     : (bet.challenger?.full_name ?? bet.challenger?.username ?? '?');
+  const exercise = (bet as any).exercise;
+  const amount   = (bet as any).amount;
+  const unit     = (bet as any).unit;
+
+  async function respond(accept: boolean) {
+    setResponding(true);
+    const { error } = await supabase
+      .from('season_bets')
+      .update({ status: accept ? 'accepted' : 'declined' })
+      .eq('id', bet.id);
+    if (error) {
+      setResponding(false);
+      Alert.alert(t('common_error'), t('bet_modal_err_msg'));
+      return;
+    }
+    await supabase.from('notifications').insert({
+      user_id: bet.challenger_id,
+      type: accept ? 'season_bet_accepted' : 'season_bet_declined',
+      title: accept ? 'Tímabilsspá samþykkt! ✅' : 'Tímabilsspá hafnað',
+      body: accept
+        ? `${bet.opponent?.full_name ?? bet.opponent?.username} samþykkti spána þína.`
+        : `${bet.opponent?.full_name ?? bet.opponent?.username} hafnaði spánni þinni.`,
+      data: { type: accept ? 'season_bet_accepted' : 'season_bet_declined', season_bet_id: bet.id },
+    });
+    setResponding(false);
+    await onRefresh?.();
+  }
 
   return (
-    <View style={[s.betRow, settled && won && s.betRowWon, settled && !won && bet.loser_id === myId && s.betRowLost]}>
-      <View style={s.betRowTop}>
-        <View style={s.betRowTeams}>
-          <Text style={[s.betRowMyPick, { color: accent }]}>{myPick ?? '—'}</Text>
-          <Text style={s.betRowVs}>vs</Text>
-          <Text style={s.betRowHisPick}>{hisPick ?? '—'}</Text>
-        </View>
-        <View style={[s.betStatus, { backgroundColor: st.bg }]}>
-          <Text style={[s.betStatusText, { color: st.color }]}>{st.label}</Text>
+    <View style={[s.betCard, settled && won && s.betCardWon, settled && !won && bet.loser_id === myId && s.betCardLost, isIncoming && s.betCardIncoming]}>
+      {/* League banner */}
+      <View style={[s.betLeagueBanner, { backgroundColor: accent + '18' }]}>
+        <Text style={[s.betLeagueText, { color: accent }]}>📅 {league || t('lb_season_bets')}</Text>
+        <View style={[s.betStatusPill, { backgroundColor: st.bg }]}>
+          <Text style={[s.betStatusPillText, { color: st.color }]}>{st.label}</Text>
         </View>
       </View>
-      <Text style={s.betMeta}>{league} · Gegn: {oppName}</Text>
+
+      {/* Teams */}
+      <View style={s.betTeamsRow}>
+        <View style={s.betTeamBox}>
+          <Text style={[s.betTeamName, { color: accent }]} numberOfLines={2}>{myTeamName}</Text>
+          <Text style={s.betTeamLabel}>{t('season_my_pick')}</Text>
+        </View>
+        <Text style={s.betTeamVs}>VS</Text>
+        <View style={[s.betTeamBox, { alignItems: 'flex-end' }]}>
+          <Text style={[s.betTeamName, { color: '#7a9aaa' }]} numberOfLines={2}>{hisTeamName}</Text>
+          <Text style={[s.betTeamLabel, { textAlign: 'right' }]}>{t('season_their_pick')}</Text>
+        </View>
+      </View>
+
+      {/* Meta row */}
+      <View style={s.betMetaRow}>
+        <Text style={s.betMetaText}>👤 {oppName}</Text>
+        {exercise && amount && (
+          <View style={s.betExercisePill}>
+            <Text style={s.betExercisePillText}>🏋️ {amount} {unit} {exercise}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Result */}
       {settled && (
-        <Text style={[s.betResult, { color: won ? '#21A56A' : '#ff4a6e' }]}>
-          {won ? '🏆 +5 stig' : '😅 0 stig'}
-        </Text>
+        <View style={[s.betResultBanner, { backgroundColor: won ? 'rgba(33,165,106,0.12)' : 'rgba(255,74,110,0.08)' }]}>
+          <Text style={[s.betResultText, { color: won ? '#21A56A' : '#ff4a6e' }]}>
+            {won ? t('season_won') : t('season_lost')}
+          </Text>
+        </View>
+      )}
+
+      {/* Incoming actions */}
+      {isIncoming && (
+        <View style={s.betActions}>
+          {responding ? <ActivityIndicator color="#21A56A" size="small" style={{ flex: 1, paddingVertical: 6 }} /> : (
+            <>
+              <TouchableOpacity style={s.betDeclineBtn} onPress={() => respond(false)}>
+                <Text style={s.betDeclineBtnText}>{t('season_decline')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.betAcceptBtn} onPress={() => respond(true)}>
+                <Text style={s.betAcceptBtnText}>{t('season_accept')}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       )}
     </View>
   );
@@ -591,23 +683,35 @@ const s = StyleSheet.create({
   pickChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
   pickChipText: { fontSize: 11, fontWeight: '700' },
 
-  // Bets
-  betRow: {
-    backgroundColor: '#0d2030', borderRadius: 14,
+  // Bet cards
+  betCard: {
+    backgroundColor: '#0d2030', borderRadius: 16,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-    padding: 14, marginBottom: 10,
+    marginBottom: 12, overflow: 'hidden',
   },
-  betRowWon: { borderColor: 'rgba(33,165,106,0.25)', backgroundColor: 'rgba(33,165,106,0.04)' },
-  betRowLost: { borderColor: 'rgba(255,74,110,0.15)' },
-  betRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  betRowTeams: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' },
-  betRowMyPick: { fontSize: 14, fontWeight: '800' },
-  betRowVs: { fontSize: 11, color: '#4a6878' },
-  betRowHisPick: { fontSize: 14, fontWeight: '800', color: '#47C4EE' },
-  betStatus: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
-  betStatusText: { fontSize: 10, fontWeight: '700' },
-  betMeta: { fontSize: 11, color: '#4a6878' },
-  betResult: { fontSize: 13, fontWeight: '800', marginTop: 6 },
+  betCardWon:      { borderColor: 'rgba(33,165,106,0.35)' },
+  betCardLost:     { borderColor: 'rgba(255,74,110,0.2)' },
+  betCardIncoming: { borderColor: 'rgba(255,200,69,0.35)' },
+  betLeagueBanner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8 },
+  betLeagueText:   { fontSize: 11, fontWeight: '700' },
+  betStatusPill:   { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
+  betStatusPillText: { fontSize: 10, fontWeight: '700' },
+  betTeamsRow:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
+  betTeamBox:      { flex: 1 },
+  betTeamName:     { fontSize: 15, fontWeight: '800', marginBottom: 2 },
+  betTeamLabel:    { fontSize: 10, color: '#4a6878' },
+  betTeamVs:       { fontSize: 11, fontWeight: '900', color: '#4a6878', paddingHorizontal: 4 },
+  betMetaRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 12 },
+  betMetaText:     { fontSize: 11, color: '#4a6878' },
+  betExercisePill: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  betExercisePillText: { fontSize: 11, color: '#7a9aaa', fontWeight: '600' },
+  betResultBanner: { paddingHorizontal: 14, paddingVertical: 10, marginTop: 2 },
+  betResultText:   { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  betActions:      { flexDirection: 'row', gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  betDeclineBtn:   { flex: 1, padding: 11, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,74,110,0.3)', alignItems: 'center' },
+  betDeclineBtnText: { color: '#ff4a6e', fontWeight: '700', fontSize: 13 },
+  betAcceptBtn:    { flex: 2, padding: 11, borderRadius: 12, backgroundColor: '#21A56A', alignItems: 'center' },
+  betAcceptBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
 
   empty: { alignItems: 'center', paddingTop: 72, gap: 10 },
   emptyIcon: { fontSize: 44 },
@@ -649,24 +753,19 @@ const s = StyleSheet.create({
   },
   vsSummaryText: { fontSize: 15, color: '#7a9aaa', textAlign: 'center', lineHeight: 22 },
 
-  friendRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#0d2030', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 12, padding: 12, marginBottom: 8,
+  friendChipRow: { flexDirection: 'row', gap: 10, paddingVertical: 4, paddingHorizontal: 2, marginBottom: 8 },
+  friendChip: { alignItems: 'center', width: 64 },
+  friendChipActive: {},
+  friendChipAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 2, borderColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
-  friendRowActive: { borderColor: '#21A56A', backgroundColor: 'rgba(33,165,106,0.07)' },
-  friendAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(33,165,106,0.15)', alignItems: 'center', justifyContent: 'center',
-  },
-  friendAvatarText: { fontSize: 13, fontWeight: '800', color: '#21A56A' },
-  friendName: { fontSize: 14, fontWeight: '700', color: '#eef4f8' },
-  friendHandle: { fontSize: 11, color: '#4a6878' },
-  friendCheck: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#21A56A', alignItems: 'center', justifyContent: 'center',
-  },
-  friendCheckText: { fontSize: 11, fontWeight: '800', color: '#000' },
+  friendChipAvatarActive: { backgroundColor: '#21A56A', borderColor: '#21A56A' },
+  friendChipInitials: { fontSize: 14, fontWeight: '800', color: '#7a9aaa' },
+  friendChipName: { fontSize: 10, color: '#7a9aaa', textAlign: 'center' },
+  friendChipNameActive: { color: '#21A56A', fontWeight: '700' },
+  friendChipCheck: { fontSize: 10, color: '#21A56A', fontWeight: '800', marginTop: 1 },
   noFriends: { fontSize: 13, color: '#4a6878', textAlign: 'center', marginBottom: 16 },
 
   challengeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },

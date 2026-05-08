@@ -39,7 +39,7 @@ const EXERCISE_EMOJI: Record<string, string> = {
 };
 
 const EXERCISE_KEY: Record<string, TranslationKey> = {
-  hlaup: 'ex_hlaup', armbeygjur: 'ex_armbeygjur', hnébeygjur: 'hnebeygjur',
+  hlaup: 'ex_hlaup', armbeygjur: 'ex_armbeygjur', hnébeygjur: 'ex_hnebeygjur',
   burpees: 'ex_burpees', hjólreiðar: 'ex_hjolreidar', planki: 'ex_planki',
   sund: 'ex_sund', pullups: 'ex_pullups', hiit: 'ex_hiit', interval_run: 'ex_interval_run',
   jump_rope: 'ex_jump_rope', box_jumps: 'ex_box_jumps',
@@ -60,6 +60,27 @@ export default function ChallengeCard({ challenge, currentUserId, onSubmitProof,
   const exOpt    = EXERCISE_OPTIONS[challenge.exercise as keyof typeof EXERCISE_OPTIONS];
   const emoji    = EXERCISE_EMOJI[challenge.exercise] ?? '💪';
   const exLabel  = EXERCISE_KEY[challenge.exercise] ? t(EXERCISE_KEY[challenge.exercise]) : (exOpt?.label ?? challenge.exercise);
+
+  const bet      = challenge.bet;
+  const match    = bet?.match;
+  const homeName = match?.home_team?.name ?? '';
+  const awayName = match?.away_team?.name ?? '';
+  const hasScore = match?.result != null && match?.home_score != null && match?.away_score != null;
+
+  const isChallenger  = bet?.challenger_id === currentUserId;
+  const myPred        = isChallenger ? bet?.challenger_prediction : bet?.opponent_prediction;
+  const theirPred     = isChallenger ? bet?.opponent_prediction   : bet?.challenger_prediction;
+  const opponentName  = (isLoser ? challenge.winner : challenge.loser)?.full_name?.split(' ')[0]
+                        ?? (isLoser ? challenge.winner : challenge.loser)?.username
+                        ?? 'Vinur';
+
+  function predLabel(pred?: string | null) {
+    if (!pred) return '';
+    if (pred === 'home') return homeName || 'Heimalið';
+    if (pred === 'away') return awayName || 'Útlið';
+    if (pred === 'draw') return 'Jafntefli';
+    return pred;
+  }
 
   const latestProof = challenge.proofs?.length ? challenge.proofs[challenge.proofs.length - 1] : undefined;
 
@@ -111,10 +132,28 @@ export default function ChallengeCard({ challenge, currentUserId, onSubmitProof,
               ? `Þú tapaðir við ${challenge.winner?.full_name ?? challenge.winner?.username ?? 'Vin'}`
               : `${challenge.loser?.full_name ?? challenge.loser?.username ?? 'Vinur'} tapaði`}
           </Text>
-          {challenge.bet?.match && (
+          {match && (
             <Text style={s.matchLabel}>
-              ⚽ {challenge.bet.match.home_team?.name ?? ''} – {challenge.bet.match.away_team?.name ?? ''}
+              ⚽ {homeName}{hasScore ? ` ${match.home_score}–${match.away_score}` : ''} – {awayName}
             </Text>
+          )}
+          {match && myPred && (
+            <View style={s.predRow}>
+              <Text style={s.predItem}>
+                {'Þú: '}
+                <Text style={myPred === match.result ? s.predCorrect : s.predWrong}>
+                  {predLabel(myPred)}{myPred === match.result ? ' ✓' : ' ✗'}
+                </Text>
+              </Text>
+              {theirPred && (
+                <Text style={s.predItem}>
+                  {opponentName}{': '}
+                  <Text style={theirPred === match.result ? s.predCorrect : s.predWrong}>
+                    {predLabel(theirPred)}{theirPred === match.result ? ' ✓' : ' ✗'}
+                  </Text>
+                </Text>
+              )}
+            </View>
           )}
         </View>
 
@@ -443,4 +482,22 @@ const s = StyleSheet.create({
     backgroundColor: '#00e5a0',
   },
   approveBtnText: { fontSize: 14, fontWeight: '800' },
+  predRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  predItem: {
+    fontSize: 11,
+    color: '#5a7a8a',
+  },
+  predCorrect: {
+    color: '#00e5a0',
+    fontWeight: '700',
+  },
+  predWrong: {
+    color: '#ff4a6e',
+    fontWeight: '700',
+  },
 });

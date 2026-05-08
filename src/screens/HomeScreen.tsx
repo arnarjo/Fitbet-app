@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, Animated, StatusBar,
+  RefreshControl, Animated, StatusBar, Image, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -11,12 +11,13 @@ import { useAuth } from '../hooks/useAuth';
 import BetModal from '../components/BetModal';
 import { useBets } from '../hooks/useBets';
 import { usePremium } from '../hooks/usePremium';
+import { useLanguage } from '../hooks/useLanguage';
 import type { Match, MatchResult } from '../types/database';
 
 // ── Types ────────────────────────────────────────────────────
 type FeedItem = {
   id: string;
-  type: 'bet_won' | 'bet_lost' | 'challenge_done' | 'challenge_assigned' | 'bet_created' | 'rematch';
+  type: string;
   actor: string;
   actorInitials: string;
   avatarColor: string;
@@ -26,9 +27,25 @@ type FeedItem = {
   time: string;
   canRematch?: boolean;
   betId?: string;
+  challengeId?: string;
+  proofImageUrl?: string;
 };
 
 type QuickMatch = Match & { betCount?: number };
+
+type ActiveBet = {
+  id: string;
+  status: string;
+  challenger_id: string;
+  challenger_prediction: string;
+  opponent_prediction: string | null;
+  exercise: string;
+  amount: number;
+  unit: string;
+  match: { kickoff_time: string; league_name: string; home_team: { name: string } | null; away_team: { name: string } | null } | null;
+  challenger: { username: string; full_name: string | null } | null;
+  opponent: { username: string; full_name: string | null } | null;
+};
 
 const AVATAR_COLORS = ['#21A56A','#47C4EE','#ff4a6e','#FFC845','#a855f7','#ff9f40'];
 
@@ -38,9 +55,11 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { createBet } = useBets(profile?.id ?? '');
   const { canAccessLeague } = usePremium();
+  const { t, lang } = useLanguage();
 
   const [feed, setFeed]               = useState<FeedItem[]>([]);
   const [upcomingMatches, setUpcoming]= useState<QuickMatch[]>([]);
+  const [activeBets, setActiveBets]   = useState<ActiveBet[]>([]);
   const [openChallenges, setOpenCh]   = useState(0);
   const [pendingBets, setPendingBets] = useState(0);
   const [refreshing, setRefreshing]   = useState(false);
@@ -67,16 +86,39 @@ export default function HomeScreen() {
     if (!profile?.id) return;
     fetchFeed();
     fetchStats();
+    fetchActiveBets();
 
     const channel = supabase
       .channel(`home_feed_${profile.id}`)
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications' }, () => fetchFeed())
+      .on('postgres_changes', { event:'*', schema:'public', table:'bets' }, () => fetchActiveBets())
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'matches' }, () => {
+        fetchUpcoming();
+        fetchActiveBets();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id]);
 
   async function fetchAll() {
-    await Promise.all([fetchFeed(), fetchUpcoming(), fetchStats()]);
+    await Promise.all([fetchFeed(), fetchUpcoming(), fetchStats(), fetchActiveBets()]);
+  }
+
+  async function fetchActiveBets() {
+    if (!profile?.id) return;
+    const { data } = await supabase
+      .from('bets')
+      .select(`
+        id, status, challenger_id, challenger_prediction, opponent_prediction, exercise, amount, unit,
+        match:matches(kickoff_time, league_name, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)),
+        challenger:profiles!challenger_id(username, full_name),
+        opponent:profiles!opponent_id(username, full_name)
+      `)
+      .or(`challenger_id.eq.${profile.id},opponent_id.eq.${profile.id}`)
+      .in('status', ['pending', 'accepted'])
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (data) setActiveBets(data as unknown as ActiveBet[]);
   }
 
 
@@ -118,27 +160,49 @@ export default function HomeScreen() {
       ...friendActivity.map((n: any, i: number) => buildFeedItem(n, false, i + 20)),
     ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 20);
 
+    // Fetch proof photos for challenge_approved items
+    const approvedIds = allActivity
+      .filter(e => e.type === 'challenge_approved' && e.challengeId)
+      .map(e => e.challengeId as string);
+
+    if (approvedIds.length > 0) {
+      const { data: proofs } = await supabase
+        .from('challenge_proofs')
+        .select('challenge_id, file_url')
+        .in('challenge_id', approvedIds)
+        .eq('proof_type', 'photo')
+        .eq('status', 'approved');
+
+      const proofMap = new Map((proofs ?? []).map((p: any) => [p.challenge_id, p.file_url]));
+      allActivity.forEach(e => {
+        if (e.challengeId && proofMap.has(e.challengeId)) {
+          e.proofImageUrl = proofMap.get(e.challengeId);
+        }
+      });
+    }
+
     setFeed(allActivity);
   }
 
   function buildFeedItem(n: any, isMe: boolean, idx: number): FeedItem {
     const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-    const actor = isMe ? 'Þú' : (n.profile?.full_name ?? n.profile?.username ?? 'Vinur');
-    const initials = actor === 'Þú'
-      ? getInitials(profile?.full_name ?? profile?.username ?? 'MÉR')
+    const actor = isMe ? t('home_you') : (n.profile?.full_name ?? n.profile?.username ?? 'Friend');
+    const initials = isMe
+      ? getInitials(profile?.full_name ?? profile?.username ?? 'ME')
       : getInitials(actor);
 
     const typeMap: Record<string, { msg: string; hl: string; hlColor: string }> = {
-      bet_won:              { msg: 'vannst veðmál 🏆',              hl: 'vann',         hlColor: '#21A56A' },
-      bet_lost:             { msg: 'tapaðir veðmáli',               hl: 'tapaði',       hlColor: '#ff4a6e' },
-      bet_received:         { msg: 'fékk veðmálsspá',               hl: 'spá',          hlColor: '#ffc940' },
-      bet_accepted:         { msg: 'samþykkti veðmál',              hl: 'samþykkt',     hlColor: '#47C4EE' },
-      challenge_assigned:   { msg: 'tapaðir og þarft að klára áskorun', hl: 'áskorun', hlColor: '#ff4a6e' },
-      challenge_submitted:  { msg: 'sendi sönnun',                  hl: 'sönnun',       hlColor: '#ffc940' },
-      challenge_approved:   { msg: 'kláraði áskorun ✓',            hl: 'klárað',       hlColor: '#21A56A' },
-      challenge_rejected:   { msg: 'sönnun hafnað — reyndu aftur', hl: 'hafnað',       hlColor: '#9090aa' },
-      friend_request:       { msg: 'sendi þér vinarbeiðni',         hl: 'beiðni',       hlColor: '#a855f7' },
-      friend_accepted:      { msg: 'samþykkti vinarbeiðni',         hl: 'vinur',        hlColor: '#21A56A' },
+      bet_won:              { msg: t('home_feed_bet_won'),       hl: 'won',      hlColor: '#21A56A' },
+      bet_lost:             { msg: t('home_feed_bet_lost'),      hl: 'lost',     hlColor: '#ff4a6e' },
+      bet_created:          { msg: t('home_feed_bet_created'),   hl: 'sent',     hlColor: '#47C4EE' },
+      bet_received:         { msg: t('home_feed_bet_received'),  hl: 'bet',      hlColor: '#ffc940' },
+      bet_accepted:         { msg: t('home_feed_bet_accepted'),  hl: 'accepted', hlColor: '#47C4EE' },
+      challenge_assigned:   { msg: t('home_feed_ch_assigned'),   hl: 'challenge',hlColor: '#ff4a6e' },
+      challenge_submitted:  { msg: t('home_feed_ch_submitted'),  hl: 'proof',    hlColor: '#ffc940' },
+      challenge_approved:   { msg: t('home_feed_ch_approved'),   hl: 'done',     hlColor: '#21A56A' },
+      challenge_rejected:   { msg: t('home_feed_ch_rejected'),   hl: 'rejected', hlColor: '#9090aa' },
+      friend_request:       { msg: t('home_feed_fr_request'),    hl: 'request',  hlColor: '#a855f7' },
+      friend_accepted:      { msg: t('home_feed_fr_accepted'),   hl: 'friend',   hlColor: '#21A56A' },
     };
 
     const cfg = typeMap[n.type] ?? { msg: n.body ?? '', hl: '', hlColor: '#9090aa' };
@@ -152,8 +216,10 @@ export default function HomeScreen() {
       highlight:      cfg.hl,
       highlightColor: cfg.hlColor,
       time:           n.created_at,
-      canRematch:     n.type === 'bet_won' || n.type === 'bet_lost',
-      betId:          n.data?.bet_id,
+      canRematch:   n.type === 'bet_won' || n.type === 'bet_lost',
+      betId:        n.data?.bet_id,
+      challengeId:  n.data?.challenge_id ?? null,
+      proofImageUrl: undefined,
     };
   }
 
@@ -195,7 +261,7 @@ export default function HomeScreen() {
   }
 
   function handleRematch() {
-    navigation.navigate('Main', { screen: 'Áskoranir' });
+    navigation.navigate('Main', { screen: 'Challenges' });
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -218,19 +284,19 @@ export default function HomeScreen() {
         {/* ── Top bar ── */}
         <View style={s.topBar}>
           <View>
-            <Text style={s.greeting}>{getGreeting()}</Text>
-            <Text style={s.userName}>{profile?.full_name ?? profile?.username ?? 'Leikmaður'}</Text>
+            <Text style={s.greeting}>{getGreeting(lang)}</Text>
+            <Text style={s.userName}>{profile?.full_name ?? profile?.username ?? 'Player'}</Text>
           </View>
           <View style={s.topBarRight}>
             {(openChallenges > 0 || pendingBets > 0) && (
-              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })}>
+              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })}>
                 <View style={s.alertDot} />
                 <Text style={s.alertText}>
-                  {openChallenges > 0 ? `${openChallenges} áskorun` : `${pendingBets} veðmál`}
+                  {openChallenges > 0 ? `${openChallenges} ${t('home_open_challenges')}` : `${pendingBets} ${t('home_pending_bets')}`}
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => navigation.navigate('Prófíll')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
               <View style={s.profileCircle}>
                 <Text style={s.profileInitials}>
                   {getInitials(profile?.full_name ?? profile?.username ?? 'MÉR')}
@@ -250,19 +316,19 @@ export default function HomeScreen() {
               <View style={s.heroBadge}>
                 <Text style={s.heroBadgeText}>{featuredMatch.league_name}</Text>
               </View>
-              <Text style={s.heroTime}>{formatKickoff(featuredMatch.kickoff_time)}</Text>
+              <Text style={s.heroTime}>{formatKickoff(featuredMatch.kickoff_time, lang)}</Text>
             </View>
             <View style={s.heroTeams}>
               <View style={s.heroTeam}>
                 <Text style={s.heroTeamName}>{featuredMatch.home_team?.name}</Text>
-                <Text style={s.heroTeamSub}>Heima</Text>
+                <Text style={s.heroTeamSub}>Home</Text>
               </View>
               <View style={s.heroVs}>
                 <Text style={s.heroVsText}>VS</Text>
               </View>
               <View style={[s.heroTeam, { alignItems:'flex-end' }]}>
                 <Text style={s.heroTeamName}>{featuredMatch.away_team?.name}</Text>
-                <Text style={[s.heroTeamSub, { textAlign:'right' }]}>Úti</Text>
+                <Text style={[s.heroTeamSub, { textAlign:'right' }]}>Away</Text>
               </View>
             </View>
             <TouchableOpacity
@@ -271,7 +337,7 @@ export default function HomeScreen() {
               activeOpacity={0.85}
             >
               <Text style={[s.heroBtnText, !canAccessLeague(featuredMatch.league_name) && { color:'#ffc940' }]}>
-                {canAccessLeague(featuredMatch.league_name) ? 'Veðja á þennan leik →' : '👑 Premium til að veðja'}
+                {canAccessLeague(featuredMatch.league_name) ? t('home_bet_on_match') : `👑 ${t('home_premium_to_bet')}`}
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -284,33 +350,33 @@ export default function HomeScreen() {
         }]}>
           <View style={[s.statBox, s.statBoxAccent]}>
             <Text style={[s.statNum, { color:'#21A56A' }]}>{points}</Text>
-            <Text style={s.statLbl}>Stig</Text>
+            <Text style={s.statLbl}>{t('home_points')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{wins}</Text>
-            <Text style={s.statLbl}>Sigrar</Text>
+            <Text style={s.statLbl}>{t('home_wins')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{losses}</Text>
-            <Text style={s.statLbl}>Töp</Text>
+            <Text style={s.statLbl}>{t('home_losses')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{winRate}<Text style={{ fontSize:14 }}>%</Text></Text>
-            <Text style={s.statLbl}>Hlutfall</Text>
+            <Text style={s.statLbl}>{t('home_win_rate')}</Text>
           </View>
         </Animated.View>
 
         {/* ── Season banner ── */}
         <TouchableOpacity
           style={s.seasonBanner}
-          onPress={() => navigation.navigate('Tímabilsveðmál')}
+          onPress={() => navigation.navigate('Season')}
           activeOpacity={0.85}
         >
           <View style={s.seasonBannerLeft}>
             <Text style={s.seasonBannerEmoji}>🏆</Text>
             <View>
-              <Text style={s.seasonBannerTitle}>Tímabilsveðmál</Text>
-              <Text style={s.seasonBannerSub}>Spáðu hvort lið endar ofar í deildinni</Text>
+              <Text style={s.seasonBannerTitle}>{t('season_title')}</Text>
+              <Text style={s.seasonBannerSub}>{t('season_hint')}</Text>
             </View>
           </View>
           <Text style={s.seasonBannerArrow}>›</Text>
@@ -318,57 +384,62 @@ export default function HomeScreen() {
 
         {/* ── Alert banners ── */}
         {openChallenges > 0 && (
-          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
+          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>⚠️</Text>
             <View style={{ flex:1 }}>
-              <Text style={s.alertBannerTitle}>{openChallenges} óskilin áskorun!</Text>
-              <Text style={s.alertBannerSub}>Kláraðu og sendu sönnun</Text>
+              <Text style={s.alertBannerTitle}>{openChallenges} {t('home_open_challenges')}!</Text>
+              <Text style={s.alertBannerSub}>{t('home_complete_proof')}</Text>
             </View>
             <Text style={s.alertBannerArrow}>›</Text>
           </TouchableOpacity>
         )}
 
         {pendingBets > 0 && (
-          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
+          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>🎯</Text>
             <View style={{ flex:1 }}>
-              <Text style={[s.alertBannerTitle, { color:'#47C4EE' }]}>{pendingBets} ósvarað veðmál!</Text>
-              <Text style={s.alertBannerSub}>Vinur skorar á þig</Text>
+              <Text style={[s.alertBannerTitle, { color:'#47C4EE' }]}>{pendingBets} {pendingBets === 1 ? 'bet' : 'bets'} awaiting response!</Text>
+              <Text style={s.alertBannerSub}>A friend challenged you</Text>
             </View>
             <Text style={s.alertBannerArrow}>›</Text>
           </TouchableOpacity>
         )}
 
-        {/* ── Quick matches ── */}
-        {upcomingMatches.length > 1 && (
+        {/* ── Active bets ── */}
+        {activeBets.length > 0 && (
           <View style={s.section}>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>Næstu leikir</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Leikir')}>
-                <Text style={s.sectionLink}>Sjá alla →</Text>
+              <Text style={s.sectionTitle}>{t('home_active_bets')}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Challenges' })}>
+                <Text style={s.sectionLink}>{t('home_view_all')} →</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.quickScroll} contentContainerStyle={s.quickContent}>
-              {upcomingMatches.slice(1, 6).map(m => {
-                const locked = !canAccessLeague(m.league_name);
+            <View style={s.activeBetsCard}>
+              {activeBets.map((bet, idx) => {
+                const isChallenger = bet.challenger_id === profile?.id;
+                const other = isChallenger ? bet.opponent : bet.challenger;
+                const otherName = other?.full_name ?? other?.username ?? 'Vinur';
+                const isPending = bet.status === 'pending';
                 return (
-                  <TouchableOpacity
-                    key={m.id}
-                    style={[s.quickCard, locked && s.quickCardLocked]}
-                    onPress={() => openBet(m, 'home')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={s.quickLeague} numberOfLines={1}>
-                      {locked ? '👑 ' : ''}{m.league_name}
-                    </Text>
-                    <Text style={s.quickTeams} numberOfLines={2}>
-                      {m.home_team?.short_name ?? m.home_team?.name}{'\n'}{m.away_team?.short_name ?? m.away_team?.name}
-                    </Text>
-                    <Text style={s.quickTime}>{formatKickoff(m.kickoff_time)}</Text>
-                  </TouchableOpacity>
+                  <View key={bet.id} style={[s.activeBetRow, idx === activeBets.length - 1 && s.activeBetRowLast]}>
+                    <View style={[s.activeBetDot, { backgroundColor: isPending ? '#ffc940' : '#21A56A' }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.activeBetMatch} numberOfLines={1}>
+                        {bet.match?.home_team?.name} vs {bet.match?.away_team?.name}
+                      </Text>
+                      <Text style={s.activeBetSub}>
+                        {isChallenger ? `You vs ${otherName}` : `${otherName} vs you`} · {bet.amount} {bet.unit} {bet.exercise}
+                      </Text>
+                    </View>
+                    <View style={[s.activeBetBadge, { backgroundColor: isPending ? 'rgba(255,201,64,0.12)' : 'rgba(33,165,106,0.12)' }]}>
+                      <Text style={[s.activeBetBadgeText, { color: isPending ? '#ffc940' : '#21A56A' }]}>
+                        {isPending ? t('home_active_bet_pending') : t('home_active_bet_accepted')}
+                      </Text>
+                    </View>
+                  </View>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -378,11 +449,11 @@ export default function HomeScreen() {
           transform: [{ translateY: feedAnim.interpolate({ inputRange:[0,1], outputRange:[16,0] }) }],
         }]}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Síðasta virkni</Text>
+            <Text style={s.sectionTitle}>{t('home_activity')}</Text>
             {feed.length > 0 && (
               <View style={s.liveIndicator}>
                 <View style={s.liveDot} />
-                <Text style={s.liveText}>Beint</Text>
+                <Text style={s.liveText}>Live</Text>
               </View>
             )}
           </View>
@@ -391,8 +462,8 @@ export default function HomeScreen() {
             {feed.length === 0 ? (
               <View style={s.feedEmpty}>
                 <Text style={s.feedEmptyIcon}>🏟</Text>
-                <Text style={s.feedEmptyTitle}>Ekkert að sýna ennþá</Text>
-                <Text style={s.feedEmptySub}>Byrjaðu að veðja og bjóddu vinum!</Text>
+                <Text style={s.feedEmptyTitle}>{t('home_no_activity')}</Text>
+                <Text style={s.feedEmptySub}>Place a bet and invite friends!</Text>
               </View>
             ) : (
               feed.map((item, idx) => (
@@ -401,6 +472,7 @@ export default function HomeScreen() {
                   item={item}
                   isLast={idx === feed.length - 1}
                   onRematch={handleRematch}
+                  lang={lang}
                 />
               ))
             )}
@@ -417,43 +489,63 @@ export default function HomeScreen() {
         initialPrediction={selectedPred}
         currentUserId={profile?.id ?? ''}
         onClose={() => { setBetModal(false); setSelectedMatch(null); setSelectedPred(null); }}
-        onSubmit={async (matchId, opponentId, prediction, exercise, amount, unit) =>
-          createBet(matchId, opponentId, prediction, exercise, amount, unit)
-        }
+        onPremiumRequired={() => navigation.navigate('Paywall')}
+        onSubmit={async (matchId, opponentId, prediction, exercise, amount, unit) => {
+          const { bet, error } = await createBet(matchId, opponentId, prediction, exercise, amount, unit);
+          return { error, betId: bet?.id };
+        }}
       />
     </SafeAreaView>
   );
 }
 
 // ── FeedRow sub-component ────────────────────────────────────
-function FeedRow({ item, isLast, onRematch }: { item: FeedItem; isLast: boolean; onRematch: () => void }) {
+function FeedRow({ item, isLast, onRematch, lang }: { item: FeedItem; isLast: boolean; onRematch: () => void; lang: string }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.spring(fadeAnim, { toValue:1, useNativeDriver:true, damping:20, stiffness:180 }).start();
   }, []);
 
+  async function shareProof() {
+    if (!item.proofImageUrl) return;
+    await Share.share({
+      message: `${item.actor} kláraði áskorun á FitBet! 💪\n${item.proofImageUrl}`,
+      url: item.proofImageUrl,
+    });
+  }
+
   return (
     <Animated.View style={[s.feedRow, isLast && s.feedRowLast, { opacity: fadeAnim }]}>
-      {/* Avatar */}
-      <View style={[s.feedAvatar, { backgroundColor: item.avatarColor + '22' }]}>
-        <Text style={[s.feedAvatarText, { color: item.avatarColor }]}>{item.actorInitials}</Text>
+      {/* Avatar + text row */}
+      <View style={s.feedRowTop}>
+        <View style={[s.feedAvatar, { backgroundColor: item.avatarColor + '22' }]}>
+          <Text style={[s.feedAvatarText, { color: item.avatarColor }]}>{item.actorInitials}</Text>
+        </View>
+
+        <View style={s.feedContent}>
+          <Text style={s.feedText} numberOfLines={2}>
+            <Text style={s.feedActor}>{item.actor} </Text>
+            <Text style={s.feedMessage}>{item.message}</Text>
+          </Text>
+          <Text style={s.feedTime}>{formatRelativeTime(item.time, lang)}</Text>
+        </View>
+
+        {item.canRematch && (
+          <TouchableOpacity style={s.rematchBtn} onPress={onRematch} activeOpacity={0.75}>
+            <Text style={s.rematchBtnText}>↺</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Content */}
-      <View style={s.feedContent}>
-        <Text style={s.feedText} numberOfLines={2}>
-          <Text style={s.feedActor}>{item.actor} </Text>
-          <Text style={s.feedMessage}>{item.message}</Text>
-        </Text>
-        <Text style={s.feedTime}>{formatRelativeTime(item.time)}</Text>
-      </View>
-
-      {/* Rematch button */}
-      {item.canRematch && (
-        <TouchableOpacity style={s.rematchBtn} onPress={onRematch} activeOpacity={0.75}>
-          <Text style={s.rematchBtnText}>↺</Text>
-        </TouchableOpacity>
+      {/* Proof photo */}
+      {item.proofImageUrl && (
+        <View style={s.proofWrap}>
+          <Image source={{ uri: item.proofImageUrl }} style={s.proofImage} resizeMode="cover" />
+          <TouchableOpacity style={s.proofShareBtn} onPress={shareProof} activeOpacity={0.8}>
+            <Text style={s.proofShareText}>📤  Deila</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </Animated.View>
   );
@@ -464,34 +556,46 @@ function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
 }
 
-function getGreeting(): string {
+function getGreeting(lang: string): string {
   const h = new Date().getHours();
-  if (h < 6)  return 'Góða nótt,';
-  if (h < 12) return 'Góðan daginn,';
-  if (h < 18) return 'Góðan dag,';
-  return 'Gott kvöld,';
+  if (lang === 'is') {
+    if (h < 12) return 'Góðan daginn,';
+    if (h < 18) return 'Góðan dag,';
+    return 'Gott kvöld,';
+  }
+  if (h < 12) return 'Good morning,';
+  if (h < 18) return 'Good afternoon,';
+  return 'Good evening,';
 }
 
-function formatKickoff(iso: string): string {
+function formatKickoff(iso: string, lang: string): string {
   const d = new Date(iso);
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
   const isTomorrow = d.toDateString() === tomorrow.toDateString();
-  const time = d.toLocaleTimeString('is-IS', { hour:'2-digit', minute:'2-digit' });
-  if (isToday)    return `Í dag · ${time}`;
-  if (isTomorrow) return `Á morgun · ${time}`;
-  return d.toLocaleDateString('is-IS', { weekday:'short', day:'numeric', month:'short' }) + ` · ${time}`;
+  const locale = lang === 'is' ? 'is-IS' : 'en-GB';
+  const time = d.toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit' });
+  if (isToday)    return lang === 'is' ? `Í dag · ${time}` : `Today · ${time}`;
+  if (isTomorrow) return lang === 'is' ? `Á morgun · ${time}` : `Tomorrow · ${time}`;
+  return d.toLocaleDateString(locale, { weekday:'short', day:'numeric', month:'short' }) + ` · ${time}`;
 }
 
-function formatRelativeTime(iso: string): string {
+function formatRelativeTime(iso: string, lang: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'Rétt í þessu';
-  if (mins < 60) return `${mins} mín síðan`;
+  if (lang === 'is') {
+    if (mins < 1)  return 'Rétt í þessu';
+    if (mins < 60) return `${mins} mín síðan`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs} klst síðan`;
+    return `${Math.floor(hrs / 24)} d síðan`;
+  }
+  if (mins < 1)  return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs} klst síðan`;
-  return `${Math.floor(hrs / 24)} d síðan`;
+  if (hrs < 24)  return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ── Styles ───────────────────────────────────────────────────
@@ -619,10 +723,11 @@ const s = StyleSheet.create({
     overflow:'hidden',
   },
   feedRow: {
-    flexDirection:'row', alignItems:'flex-start', gap:12,
+    flexDirection:'column',
     padding:14,
     borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.05)',
   },
+  feedRowTop:   { flexDirection:'row', alignItems:'flex-start', gap:12 },
   feedRowLast:  { borderBottomWidth:0 },
   feedAvatar: {
     width:36, height:36, borderRadius:18,
@@ -641,10 +746,37 @@ const s = StyleSheet.create({
     alignItems:'center', justifyContent:'center', flexShrink:0,
   },
   rematchBtnText: { fontSize:16, color:'#9090aa' },
+  proofWrap: { marginTop:10, borderRadius:12, overflow:'hidden' },
+  proofImage: { width:'100%', height:200, borderRadius:12 },
+  proofShareBtn: {
+    marginTop:8, backgroundColor:'rgba(255,255,255,0.08)',
+    borderRadius:10, paddingVertical:9, alignItems:'center',
+  },
+  proofShareText: { fontSize:13, color:'#ccc', fontWeight:'600' },
   feedEmpty: { alignItems:'center', paddingVertical:40, gap:8 },
   feedEmptyIcon:  { fontSize:40 },
   feedEmptyTitle: { fontSize:15, fontWeight:'700', color:'#f0f0f8' },
   feedEmptySub:   { fontSize:13, color:'#5a5a72', textAlign:'center' },
+
+  // Active bets
+  activeBetsCard: {
+    backgroundColor: '#1a1a24',
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    overflow: 'hidden', marginBottom: 4,
+  },
+  activeBetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  activeBetRowLast: { borderBottomWidth: 0 },
+  activeBetDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  activeBetMatch: { fontSize: 13, fontWeight: '700', color: '#f0f0f8', marginBottom: 2 },
+  activeBetSub: { fontSize: 11, color: '#9090aa' },
+  activeBetBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  activeBetBadgeText: { fontSize: 10, fontWeight: '800' },
 
   seasonBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

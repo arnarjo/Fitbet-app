@@ -122,6 +122,9 @@ const t = {
   matches_predict_draw:  { en: 'Draw',             is: 'Jafntefli'           },
   matches_predict_away:  { en: 'Away win',         is: 'Útlið vinnur'        },
   matches_kickoff:       { en: 'Kickoff',          is: 'Upphaf'              },
+  matches_today:         { en: 'TODAY',            is: 'Í DAG'               },
+  matches_tomorrow:      { en: 'TOMORROW',         is: 'Á MORGUN'            },
+  matches_later:         { en: 'LATER',            is: 'SEINNA'              },
 
   // ── BetModal ─────────────────────────────────────────────────
   bet_modal_title:        { en: 'New Bet',              is: 'Nýtt veðmál'            },
@@ -479,7 +482,7 @@ const t = {
   // ── Exercise names ────────────────────────────────────────────
   ex_hlaup:      { en: 'Running',    is: 'Hlaup'      },
   ex_armbeygjur: { en: 'Push-ups',   is: 'Armbeygjur' },
-  hnebeygjur:    { en: 'Squats',     is: 'Hnébeygjur' },
+  ex_hnebeygjur: { en: 'Squats',     is: 'Hnébeygjur' },
   ex_burpees:    { en: 'Burpees',    is: 'Burpees'    },
   ex_hjolreidar: { en: 'Cycling',    is: 'Hjólreiðar' },
   ex_planki:     { en: 'Plank',      is: 'Planki'     },

@@ -7,6 +7,10 @@ import { Text } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { navigationRef } from './navigationRef';
+import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useLanguage } from '../hooks/useLanguage';
+import { useBadgeCount } from '../hooks/useBadgeCount';
+import { useAuth } from '../hooks/useAuth';
 
 // Auth screens
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
@@ -24,31 +28,32 @@ import LeaguesScreen     from '../screens/LeaguesScreen';
 import FriendsScreen     from '../screens/FriendsScreen';
 import AdminScreen       from '../screens/AdminScreen';
 import PaywallScreen     from '../screens/PaywallScreen';
+import HistoryScreen     from '../screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    Heim:       '⚽',
-    Leikir:     '📅',
-    Áskoranir:  '💪',
-    Stigatafla: '🏆',
-    Prófíll:    '👤',
-  };
-  return (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
-      {icons[name] ?? '●'}
-    </Text>
-  );
-}
+const TAB_ICONS: Record<string, string> = {
+  Home:        '⚽',
+  Matches:     '📅',
+  Challenges:  '💪',
+  Leaderboard: '🏆',
+  Profile:     '👤',
+};
 
 function MainTabs() {
+  const { t } = useLanguage();
+  const { profile } = useAuth();
+  const badgeCount = useBadgeCount(profile?.id ?? '');
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused }) => (
+          <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
+            {TAB_ICONS[route.name] ?? '●'}
+          </Text>
+        ),
         tabBarStyle: {
           backgroundColor: '#050f17',
           borderTopColor: '#0d2030',
@@ -63,11 +68,11 @@ function MainTabs() {
         tabBarInactiveTintColor: '#4a6878',
       })}
     >
-      <Tab.Screen name="Heim"        component={HomeScreen} />
-      <Tab.Screen name="Leikir"      component={MatchesScreen} />
-      <Tab.Screen name="Áskoranir"   component={ChallengesScreen} />
-      <Tab.Screen name="Stigatafla"  component={LeaderboardScreen} />
-      <Tab.Screen name="Prófíll"     component={ProfileScreen} />
+      <Tab.Screen name="Home"        component={HomeScreen}        options={{ tabBarLabel: t('tab_home')        }} />
+      <Tab.Screen name="Matches"     component={MatchesScreen}     options={{ tabBarLabel: t('tab_matches')     }} />
+      <Tab.Screen name="Challenges"  component={ChallengesScreen}  options={{ tabBarLabel: t('tab_challenges'), tabBarBadge: badgeCount > 0 ? badgeCount : undefined  }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: t('tab_leaderboard') }} />
+      <Tab.Screen name="Profile"     component={ProfileScreen}     options={{ tabBarLabel: t('tab_profile')     }} />
     </Tab.Navigator>
   );
 }
@@ -79,6 +84,7 @@ type RootNavigatorProps = {
 export default function RootNavigator({ onRouteChange }: RootNavigatorProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  usePushNotifications(session?.user?.id ?? '', navigationRef);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -107,13 +113,14 @@ export default function RootNavigator({ onRouteChange }: RootNavigatorProps) {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
           <>
-            <Stack.Screen name="Main"              component={MainTabs} />
-            <Stack.Screen name="Tímabilsveðmál"   component={SeasonScreen} />
-            <Stack.Screen name="Leaderboard"       component={LeaderboardScreen} />
-            <Stack.Screen name="Leagues"           component={LeaguesScreen} />
-            <Stack.Screen name="Friends"           component={FriendsScreen} />
-            <Stack.Screen name="Admin"             component={AdminScreen} />
-            <Stack.Screen name="Paywall"           component={PaywallScreen}
+            <Stack.Screen name="Main"         component={MainTabs} />
+            <Stack.Screen name="Season"       component={SeasonScreen} />
+            <Stack.Screen name="LeaguesFull"  component={LeaderboardScreen} />
+            <Stack.Screen name="Leagues"      component={LeaguesScreen} />
+            <Stack.Screen name="Friends"      component={FriendsScreen} />
+            <Stack.Screen name="History"      component={HistoryScreen} />
+            <Stack.Screen name="Admin"        component={AdminScreen} />
+            <Stack.Screen name="Paywall"      component={PaywallScreen}
               options={{ presentation: 'modal' }} />
           </>
         ) : (

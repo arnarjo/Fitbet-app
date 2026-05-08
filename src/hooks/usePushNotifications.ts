@@ -18,9 +18,11 @@ Notifications.setNotificationHandler({
     // Show all as banners except passive feed events
     const shouldShow = !['friend_accepted'].includes(type);
     return {
-      shouldShowAlert: shouldShow,
-      shouldPlaySound: shouldShow,
-      shouldSetBadge:  true,
+      shouldShowAlert:  shouldShow,
+      shouldShowBanner: shouldShow,
+      shouldShowList:   shouldShow,
+      shouldPlaySound:  shouldShow,
+      shouldSetBadge:   true,
     };
   },
 });
@@ -62,9 +64,10 @@ export function usePushNotifications(
 ) {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
-  const notifListener  = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notifListener    = useRef<Notifications.Subscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
   const appStateRef    = useRef(AppState.currentState);
 
   useEffect(() => {
@@ -110,7 +113,10 @@ export function usePushNotifications(
 
   // ── Register device & save token ─────────────────────────
   async function registerForPushNotifications() {
-    if (!Device.isDevice) return;
+    if (!Device.isDevice) {
+      setTokenError('not_a_device');
+      return;
+    }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -122,26 +128,46 @@ export function usePushNotifications(
 
     setPermissionStatus(finalStatus);
 
-    if (finalStatus !== 'granted') return;
+    if (finalStatus !== 'granted') {
+      setTokenError('permission_denied:' + finalStatus);
+      return;
+    }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId
-      ?? Constants.easConfig?.projectId;
+      ?? Constants.easConfig?.projectId
+      ?? 'b521fa2f-ed33-4a86-a63a-5787c27830d5';
 
-    if (!projectId) return;
+    let token: string | undefined;
+    try {
+      const result = await Notifications.getExpoPushTokenAsync({ projectId });
+      token = result.data;
+    } catch (err: any) {
+      setTokenError('token_fetch_failed:' + String(err?.message ?? err));
+      return;
+    }
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    if (!token) return;
+    if (!token) {
+      setTokenError('token_empty');
+      return;
+    }
+
     setExpoPushToken(token);
 
     // Save token to Supabase
     const platform = Platform.OS as 'ios' | 'android';
-    await supabase
+    const { error: upsertError } = await supabase
       .from('push_tokens')
       .upsert(
         { user_id: userId, token, platform, active: true, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,token' }
       );
 
+    if (upsertError) {
+      setTokenError('upsert_failed:' + upsertError.message);
+    } else {
+      // Success — token saved, clear any previous error
+      setTokenError(null);
+    }
   }
 
   // ── Deep link routing on tap ─────────────────────────────
@@ -155,14 +181,23 @@ export function usePushNotifications(
       case 'bet_declined':
       case 'bet_won':
       case 'bet_lost':
-        nav.navigate('Main', { screen: 'Áskoranir' });
+      case 'bet_created':
+        nav.navigate('Main', { screen: 'Challenges' });
+        break;
+
+      case 'season_bet_received':
+      case 'season_bet_accepted':
+      case 'season_bet_declined':
+      case 'season_bet_created':
+        nav.navigate('Season');
         break;
 
       case 'challenge_assigned':
       case 'challenge_submitted':
       case 'challenge_approved':
       case 'challenge_rejected':
-        nav.navigate('Main', { screen: 'Áskoranir' });
+      case 'challenge_reminder':
+        nav.navigate('Main', { screen: 'Challenges' });
         break;
 
       case 'friend_request':
@@ -171,7 +206,7 @@ export function usePushNotifications(
         break;
 
       default:
-        nav.navigate('Main', { screen: 'Heim' });
+        nav.navigate('Main', { screen: 'Home' });
     }
 
     // Mark as read
@@ -188,7 +223,7 @@ export function usePushNotifications(
       .eq('read', false);
   }
 
-  return { expoPushToken, permissionStatus };
+  return { expoPushToken, permissionStatus, tokenError };
 }
 
 

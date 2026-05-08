@@ -252,7 +252,7 @@ export default function AdminScreen() {
     }).eq('id', mk.id);
 
     // Update profile stats for winners and losers
-    const profileUpdates: Promise<any>[] = [];
+    const profileUpdates: PromiseLike<any>[] = [];
     for (const b of bets ?? []) {
       const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
       const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;

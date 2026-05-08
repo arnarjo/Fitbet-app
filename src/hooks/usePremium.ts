@@ -1,20 +1,21 @@
 // src/hooks/usePremium.ts
 // Hook to check and manage premium status throughout the app
 
-import { useState, useEffect, createContext, useContext } from 'react';
-import { isPremium, setupRevenueCat } from '../lib/revenuecat';
+import { useState, useEffect } from 'react';
+import { isPremium } from '../lib/revenuecat';
 import { useAuth } from './useAuth';
 
 // ── League gating ────────────────────────────────────────────
 export const FREE_LEAGUES = [
+  'Premier League',
   'Besta deild karla',
   'Lengjudeild karla',
 ];
 
 export const PREMIUM_LEAGUES = [
-  'Premier League',
   'UEFA Champions League',
   'FIFA World Cup',
+  '2. deild karla',
 ];
 
 // ── Limits ───────────────────────────────────────────────────
@@ -30,19 +31,20 @@ export const PREMIUM_LIMITS = {
   customChallenges:    true,
 };
 
+const TESTING_PREMIUM = false;
+
 // ── Hook ─────────────────────────────────────────────────────
 export function usePremium() {
   const { profile } = useAuth();
-  const [premium, setPremium]   = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [premium, setPremium]   = useState(TESTING_PREMIUM);
+  const [loading, setLoading]   = useState(!TESTING_PREMIUM);
 
   useEffect(() => {
-    if (!profile?.id) return;
+    if (TESTING_PREMIUM || !profile?.id) return;
     init();
   }, [profile?.id]);
 
   async function init() {
-    await setupRevenueCat(profile!.id);
     const status = await isPremium();
     setPremium(status);
     setLoading(false);
@@ -54,7 +56,8 @@ export function usePremium() {
     return status;
   }
 
-  const limits = premium ? PREMIUM_LIMITS : FREE_LIMITS;
+  const isAdmin = profile?.is_admin === true;
+  const limits = (premium || isAdmin) ? PREMIUM_LIMITS : FREE_LIMITS;
 
   function canCreateLeague(currentCount: number): boolean {
     return currentCount < limits.maxLeagues;
@@ -69,7 +72,7 @@ export function usePremium() {
   }
 
   function canAccessLeague(leagueName: string): boolean {
-    if (premium) return true;
+    if (premium || isAdmin) return true;
     return FREE_LEAGUES.includes(leagueName);
   }
 

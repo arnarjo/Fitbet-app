@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { MatchResult } from '../types/database';
 
@@ -6,8 +6,9 @@ export function useIncomingBets(userId: string) {
   const [bets, setBets] = useState<any[]>([]);
   const [outgoingBets, setOutgoingBets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const fetchSeq = useRef(0);
 
-  async function fetchIncomingBets() {
+  const fetchIncomingBets = useCallback(async () => {
     if (!userId) {
       setBets([]);
       setOutgoingBets([]);
@@ -15,6 +16,7 @@ export function useIncomingBets(userId: string) {
       return;
     }
 
+    const seq = ++fetchSeq.current;
     setLoading(true);
 
     const [incoming, outgoing] = await Promise.all([
@@ -46,10 +48,11 @@ export function useIncomingBets(userId: string) {
         .order('created_at', { ascending: false }),
     ]);
 
+    if (seq !== fetchSeq.current) return;
     if (!incoming.error) setBets(incoming.data || []);
     if (!outgoing.error) setOutgoingBets(outgoing.data || []);
     setLoading(false);
-  }
+  }, [userId]);
 
   async function respondToBet(
     betId: string,
@@ -86,8 +89,32 @@ export function useIncomingBets(userId: string) {
   }
 
   useEffect(() => {
+    if (!userId) return;
     fetchIncomingBets();
-  }, [userId]);
+
+    const channel = supabase
+      .channel(`incoming_bets_${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bets',
+        filter: `challenger_id=eq.${userId}`,
+      }, () => fetchIncomingBets())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bets',
+        filter: `opponent_id=eq.${userId}`,
+      }, () => fetchIncomingBets())
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'matches',
+      }, () => fetchIncomingBets())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchIncomingBets]);
 
   return {
     bets,

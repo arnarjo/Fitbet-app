@@ -73,16 +73,6 @@ async function createBet(
       return { error: betError };
     }
 
-    await supabase.from('notifications').insert([
-      {
-        user_id: opponentId,
-        type: 'bet_received',
-        title: 'Nýtt veðmál! 🎯',
-        body: `Þú fékkst veðmálsbeiðni. Áskorun: ${amount} ${unit} ${exercise}`,
-        data: { type: 'bet_received', bet_id: bet.id },
-      },
-    ]);
-
     await fetchBets();
     return { bet, error: null };
   }

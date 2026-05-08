@@ -152,9 +152,15 @@ export interface Challenge {
   winner?: Profile;
   proofs?: ChallengeProof[];
   bet?: {
+    challenger_id?: string | null;
+    challenger_prediction?: string | null;
+    opponent_prediction?: string | null;
     match?: {
       home_team: { name: string } | null;
       away_team: { name: string } | null;
+      result?: MatchResult | null;
+      home_score?: number | null;
+      away_score?: number | null;
     } | null;
   } | null;
 }

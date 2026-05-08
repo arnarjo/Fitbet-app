@@ -1,32 +1,35 @@
-// src/screens/ProfileScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   StatusBar, Alert, Switch, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useStrava } from '../hooks/useStrava';
+import { useLanguage } from '../hooks/useLanguage';
 import type { Achievement } from '../types/database';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 type AchievementDef = {
   type: string;
   emoji: string;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   points: number;
 };
 
-const ALL_ACHIEVEMENTS: AchievementDef[] = [
-  { type: 'first_win',          emoji: '🏆', title: 'Fyrsti sigur',        desc: 'Vann fyrsta veðmálið',             points: 1  },
-  { type: 'ten_wins',           emoji: '🔟', title: '10 sigrar',           desc: 'Vann 10 veðmál',                   points: 10 },
-  { type: 'first_challenge',    emoji: '💪', title: 'Fyrsta áskorun',      desc: 'Kláraðir fyrstu áskorunina',       points: 1  },
-  { type: 'challenge_10km',     emoji: '🏃', title: '10 km hlaup',         desc: 'Hljóp 10 km í áskorun',           points: 1  },
-  { type: 'challenge_100_pushups', emoji: '🔥', title: '100 armbeygjur',  desc: 'Kláraði 100 armbeygjur',           points: 1  },
-  { type: 'five_streak',        emoji: '🔥', title: '5 sigrar í röð',      desc: 'Vann 5 veðmál í röð',             points: 5  },
-  { type: 'season_bet_win',     emoji: '📅', title: 'Tímabilsspá',         desc: 'Vann tímabilsveðmál',              points: 1  },
+const ACHIEVEMENT_DEFS: AchievementDef[] = [
+  { type: 'first_win',             emoji: '🏆', titleKey: 'ach_first_win_title',       descKey: 'ach_first_win_desc',       points: 1  },
+  { type: 'ten_wins',              emoji: '🔟', titleKey: 'ach_ten_wins_title',        descKey: 'ach_ten_wins_desc',        points: 10 },
+  { type: 'first_challenge',       emoji: '💪', titleKey: 'ach_first_challenge_title', descKey: 'ach_first_challenge_desc', points: 1  },
+  { type: 'challenge_10km',        emoji: '🏃', titleKey: 'ach_challenge_10km_title',  descKey: 'ach_challenge_10km_desc',  points: 1  },
+  { type: 'challenge_100_pushups', emoji: '🔥', titleKey: 'ach_100_pushups_title',     descKey: 'ach_100_pushups_desc',     points: 1  },
+  { type: 'five_streak',           emoji: '🔥', titleKey: 'ach_five_streak_title',     descKey: 'ach_five_streak_desc',     points: 5  },
+  { type: 'season_bet_win',        emoji: '📅', titleKey: 'ach_season_bet_win_title',  descKey: 'ach_season_bet_win_desc',  points: 1  },
 ];
 
 function getInitials(name: string) {
@@ -34,8 +37,9 @@ function getInitials(name: string) {
 }
 
 export default function ProfileScreen() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, refreshProfile } = useAuth();
   const navigation = useNavigation<any>();
+  const { t, lang, setLang } = useLanguage();
   const { connected: stravaConnected, connecting: stravaConnecting, connect: stravaConnect, disconnect: stravaDisconnect } = useStrava();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [notifEnabled, setNotifEnabled] = useState(true);
@@ -46,6 +50,10 @@ export default function ProfileScreen() {
     fetchAchievements();
     fetchRecentBets();
   }, [profile?.id]);
+
+  useFocusEffect(useCallback(() => {
+    refreshProfile();
+  }, []));
 
   async function fetchAchievements() {
     const { data } = await supabase
@@ -58,7 +66,7 @@ export default function ProfileScreen() {
   async function fetchRecentBets() {
     const { data } = await supabase
       .from('bets')
-      .select('*, match:matches(*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*))')
+      .select('*, match:matches(*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*)), challenger:profiles!challenger_id(username, full_name), opponent:profiles!opponent_id(username, full_name)')
       .or(`challenger_id.eq.${profile!.id},opponent_id.eq.${profile!.id}`)
       .eq('status', 'settled')
       .order('settled_at', { ascending: false })
@@ -66,32 +74,75 @@ export default function ProfileScreen() {
     setRecentBets(data ?? []);
   }
 
+  async function diagnosePush() {
+    const lines: string[] = [];
+    lines.push(`Device: ${Device.isDevice ? 'REAL ✅' : 'EMULATOR ❌'}`);
+    lines.push(`OS: ${Device.osName} ${Device.osVersion}`);
+
+    const { status } = await Notifications.getPermissionsAsync();
+    lines.push(`Permission: ${status}`);
+
+    if (!Device.isDevice) {
+      Alert.alert('Push Diagnosis', lines.join('\n'));
+      return;
+    }
+
+    if (status !== 'granted') {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      lines.push(`Permission after request: ${newStatus}`);
+      if (newStatus !== 'granted') {
+        Alert.alert('Push Diagnosis', lines.join('\n'));
+        return;
+      }
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? 'b521fa2f-ed33-4a86-a63a-5787c27830d5';
+    lines.push(`ProjectId: ${projectId}`);
+
+    try {
+      const result = await Notifications.getExpoPushTokenAsync({ projectId });
+      lines.push(`Token: ${result.data.slice(0, 40)}...`);
+
+      const { data: profile2 } = await supabase.auth.getUser();
+      const userId = profile2?.user?.id;
+      lines.push(`UserId: ${userId ? userId.slice(0, 8) + '...' : 'MISSING ❌'}`);
+
+      if (userId) {
+        const { data: tokens, error: tokErr } = await supabase
+          .from('push_tokens')
+          .select('token, active, updated_at')
+          .eq('user_id', userId);
+        lines.push(`DB tokens: ${tokErr ? 'ERROR: ' + tokErr.message : (tokens?.length ?? 0) + ' rows'}`);
+      }
+    } catch (err: any) {
+      lines.push(`getExpoPushTokenAsync ERROR:\n${err?.message ?? String(err)}`);
+    }
+
+    Alert.alert('Push Diagnosis', lines.join('\n'), [{ text: 'OK' }]);
+  }
+
   async function handleSignOut() {
-    Alert.alert('Útskrá', 'Ertu viss um að þú viljir skrá þig út?', [
-      { text: 'Hætta við', style: 'cancel' },
-      { text: 'Útskrá', style: 'destructive', onPress: signOut },
+    Alert.alert(t('profile_signout_q'), t('profile_signout_msg'), [
+      { text: t('common_cancel'), style: 'cancel' },
+      { text: t('profile_signout'), style: 'destructive', onPress: signOut },
     ]);
   }
 
   async function handleDeleteAccount() {
-    Alert.alert(
-      'Eyða reikningi',
-      'Þetta eyðir reikningnum þínum og öllum gögnum að fullu. Þetta er óafturkræft.',
-      [
-        { text: 'Hætta við', style: 'cancel' },
-        {
-          text: 'Eyða', style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.rpc('delete_user');
-            if (error) {
-              Alert.alert('Villa', 'Ekki tókst að eyða reikningi. Hafðu samband við support@fitbet.is');
-              return;
-            }
-            await supabase.auth.signOut();
-          },
+    Alert.alert(t('profile_delete_q'), t('profile_delete_msg'), [
+      { text: t('common_cancel'), style: 'cancel' },
+      {
+        text: t('profile_confirm'), style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.rpc('delete_user');
+          if (error) {
+            Alert.alert(t('common_error'), t('profile_delete_err'));
+            return;
+          }
+          await supabase.auth.signOut();
         },
-      ]
-    );
+      },
+    ]);
   }
 
   async function handleStravaToggle() {
@@ -107,6 +158,11 @@ export default function ProfileScreen() {
   const points  = profile?.total_points ?? 0;
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
   const unlockedTypes = achievements.map(a => a.type);
+  const ALL_ACHIEVEMENTS = ACHIEVEMENT_DEFS.map(a => ({
+    ...a,
+    title: t(a.titleKey as any),
+    desc: t(a.descKey as any),
+  }));
 
   return (
     <SafeAreaView style={s.container}>
@@ -136,27 +192,27 @@ export default function ProfileScreen() {
         <View style={s.statsGrid}>
           <View style={[s.statBox, s.statBoxAccent]}>
             <Text style={[s.statNum, { color: '#21A56A' }]}>{points}</Text>
-            <Text style={s.statLbl}>Stig</Text>
+            <Text style={s.statLbl}>{t('profile_points')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{wins}</Text>
-            <Text style={s.statLbl}>Sigrar</Text>
+            <Text style={s.statLbl}>{t('profile_wins')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{losses}</Text>
-            <Text style={s.statLbl}>Töp</Text>
+            <Text style={s.statLbl}>{t('profile_losses')}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statNum}>{winRate}<Text style={{ fontSize: 14 }}>%</Text></Text>
-            <Text style={s.statLbl}>Hlutfall</Text>
+            <Text style={s.statLbl}>{t('profile_win_rate')}</Text>
           </View>
         </View>
 
         {/* ── Win rate bar ── */}
         <View style={s.section}>
           <View style={s.winRateRow}>
-            <Text style={s.winRateLabel}>Sigrar</Text>
-            <Text style={s.winRateLabel}>Töp</Text>
+            <Text style={s.winRateLabel}>{t('profile_wins')}</Text>
+            <Text style={s.winRateLabel}>{t('profile_losses')}</Text>
           </View>
           <View style={s.winRateBar}>
             <View style={[s.winRateFill, { flex: wins || 1 }]} />
@@ -171,7 +227,7 @@ export default function ProfileScreen() {
         {/* ── Achievements ── */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>
-            Verðlaun ({unlockedTypes.length}/{ALL_ACHIEVEMENTS.length})
+            {t('profile_achievements')} ({unlockedTypes.length}/{ALL_ACHIEVEMENTS.length})
           </Text>
           <View style={s.achievementGrid}>
             {ALL_ACHIEVEMENTS.map(ach => {
@@ -188,7 +244,7 @@ export default function ProfileScreen() {
                     {ach.title}
                   </Text>
                   <Text style={s.achievementDesc} numberOfLines={2}>
-                    {unlocked ? ach.desc : '?????'}
+                    {ach.desc}
                   </Text>
                   {unlocked && (
                     <View style={s.unlockedBadge}>
@@ -204,18 +260,29 @@ export default function ProfileScreen() {
         {/* ── Recent results ── */}
         {recentBets.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Nýlegar niðurstöður</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={s.sectionTitle}>{t('profile_recent')}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('History')}>
+                <Text style={{ color: '#21A56A', fontSize: 13, fontWeight: '600' }}>Sjá allt →</Text>
+              </TouchableOpacity>
+            </View>
             <View style={s.recentCard}>
               {recentBets.map(bet => {
                 const won = bet.winner_id === profile?.id;
+                const isChallenger = bet.challenger_id === profile?.id;
+                const other = isChallenger ? bet.opponent : bet.challenger;
+                const otherName = other?.full_name ?? other?.username ?? t('challenges_unknown');
                 return (
                   <View key={bet.id} style={s.recentRow}>
                     <View style={[s.recentDot, { backgroundColor: won ? '#21A56A' : '#ff4a6e' }]} />
-                    <Text style={s.recentMatch} numberOfLines={1}>
-                      {bet.match?.home_team?.short_name} vs {bet.match?.away_team?.short_name}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.recentMatch} numberOfLines={1}>
+                        {bet.match?.home_team?.name} vs {bet.match?.away_team?.name}
+                      </Text>
+                      <Text style={s.recentOpponent} numberOfLines={1}>vs {otherName}</Text>
+                    </View>
                     <Text style={[s.recentResult, { color: won ? '#21A56A' : '#ff4a6e' }]}>
-                      {won ? '+3 stig' : '0 stig'}
+                      {won ? t('profile_won') : t('profile_lost')}
                     </Text>
                   </View>
                 );
@@ -233,8 +300,8 @@ export default function ProfileScreen() {
           >
             <Text style={s.friendsBtnIcon}>👥</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.friendsBtnText}>Vinir</Text>
-              <Text style={s.friendsBtnSub}>Skoða og bæta við vinum</Text>
+              <Text style={s.friendsBtnText}>{t('profile_friends')}</Text>
+              <Text style={s.friendsBtnSub}>{t('profile_friends_sub')}</Text>
             </View>
             <Text style={s.friendsBtnArrow}>›</Text>
           </TouchableOpacity>
@@ -246,8 +313,8 @@ export default function ProfileScreen() {
           >
             <Text style={s.friendsBtnIcon}>🏅</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.friendsBtnText}>Deildir</Text>
-              <Text style={s.friendsBtnSub}>Búa til eða ganga í deild</Text>
+              <Text style={s.friendsBtnText}>{t('profile_leagues')}</Text>
+              <Text style={s.friendsBtnSub}>{t('profile_leagues_sub')}</Text>
             </View>
             <Text style={s.friendsBtnArrow}>›</Text>
           </TouchableOpacity>
@@ -255,15 +322,30 @@ export default function ProfileScreen() {
 
         {/* ── Settings ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Stillingar</Text>
+          <Text style={s.sectionTitle}>{t('profile_settings')}</Text>
           <View style={s.settingsCard}>
+            <TouchableOpacity style={s.settingRow} onPress={() => setLang(lang === 'en' ? 'is' : 'en')} activeOpacity={0.8}>
+              <View style={s.settingLeft}>
+                <Text style={s.settingIcon}>{lang === 'is' ? '🇮🇸' : '🇬🇧'}</Text>
+                <View>
+                  <Text style={s.settingTitle}>{t('profile_language')}</Text>
+                  <Text style={s.settingSub}>{t('profile_language_sub')}</Text>
+                </View>
+              </View>
+              <Text style={[s.settingArrow, { fontSize: 14, fontWeight: '700', color: '#21A56A' }]}>
+                {lang === 'is' ? 'IS' : 'EN'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={s.settingDivider} />
+
             <View style={s.settingRow}>
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>⚡</Text>
                 <View>
-                  <Text style={s.settingTitle}>Strava</Text>
+                  <Text style={s.settingTitle}>{t('profile_strava')}</Text>
                   <Text style={s.settingSub}>
-                    {stravaConnected ? 'Tengt — hlaup staðfest sjálfkrafa' : 'Tengdu til að staðfesta sjálfkrafa'}
+                    {stravaConnected ? t('profile_strava_on') : t('profile_strava_off')}
                   </Text>
                 </View>
               </View>
@@ -282,8 +364,8 @@ export default function ProfileScreen() {
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>🔔</Text>
                 <View>
-                  <Text style={s.settingTitle}>Push tilkynningar</Text>
-                  <Text style={s.settingSub}>Fáðu tilkynningar um veðmál og áskoranir</Text>
+                  <Text style={s.settingTitle}>{t('profile_notif')}</Text>
+                  <Text style={s.settingSub}>{t('profile_notif_sub')}</Text>
                 </View>
               </View>
               <Switch
@@ -298,11 +380,11 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={s.settingRow}
-              onPress={() => Linking.openURL('https://arnarjo.github.io/Fitbet-app/privacy-policy.html')}
+              onPress={() => Linking.openURL('https://fitbet.fit/privacy')}
             >
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>🔒</Text>
-                <Text style={s.settingTitle}>Persónuverndarstefna</Text>
+                <Text style={s.settingTitle}>{t('profile_privacy')}</Text>
               </View>
               <Text style={s.settingArrow}>›</Text>
             </TouchableOpacity>
@@ -311,11 +393,11 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={s.settingRow}
-              onPress={() => Linking.openURL('https://fitbet.is/terms')}
+              onPress={() => Linking.openURL('https://fitbet.fit/terms')}
             >
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>📄</Text>
-                <Text style={s.settingTitle}>Notkunarskilmálar</Text>
+                <Text style={s.settingTitle}>{t('profile_terms')}</Text>
               </View>
               <Text style={s.settingArrow}>›</Text>
             </TouchableOpacity>
@@ -324,11 +406,11 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={s.settingRow}
-              onPress={() => Linking.openURL('mailto:support@fitbet.is')}
+              onPress={() => Linking.openURL('mailto:fitbet@fitbet.fit')}
             >
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>✉️</Text>
-                <Text style={s.settingTitle}>Hafa samband</Text>
+                <Text style={s.settingTitle}>{t('profile_contact')}</Text>
               </View>
               <Text style={s.settingArrow}>›</Text>
             </TouchableOpacity>
@@ -344,7 +426,7 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <Text style={s.adminBtnIcon}>⚙</Text>
-              <Text style={s.adminBtnText}>Admin — Stjórna leikjum</Text>
+              <Text style={s.adminBtnText}>{t('profile_admin')}</Text>
               <Text style={s.settingArrow}>›</Text>
             </TouchableOpacity>
           </View>
@@ -352,11 +434,14 @@ export default function ProfileScreen() {
 
         {/* ── Actions ── */}
         <View style={s.section}>
+          <TouchableOpacity style={[s.signOutBtn, { backgroundColor: '#1a2f3a', marginBottom: 8 }]} onPress={diagnosePush}>
+            <Text style={[s.signOutText, { color: '#21A56A' }]}>🔔 Push Diagnosis</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
-            <Text style={s.signOutText}>Útskrá</Text>
+            <Text style={s.signOutText}>{t('profile_signout')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount}>
-            <Text style={s.deleteText}>Eyða reikningi</Text>
+            <Text style={s.deleteText}>{t('profile_delete')}</Text>
           </TouchableOpacity>
           <Text style={s.versionText}>FitBet v1.0.0 · is.fitbet.app</Text>
         </View>
@@ -444,7 +529,8 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   recentDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  recentMatch: { flex: 1, fontSize: 13, fontWeight: '600', color: '#eef4f8' },
+  recentMatch: { fontSize: 13, fontWeight: '600', color: '#eef4f8' },
+  recentOpponent: { fontSize: 11, color: '#4a6878', marginTop: 1 },
   recentResult: { fontSize: 12, fontWeight: '800' },
   settingsCard: {
     backgroundColor: '#0d2030', borderRadius: 14,

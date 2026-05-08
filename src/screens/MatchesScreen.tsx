@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,7 +16,9 @@ import BetModal from '../components/BetModal';
 import { useMatches } from '../hooks/useMatches';
 import { useBets } from '../hooks/useBets';
 import { useAuth } from '../hooks/useAuth';
-import { usePremium } from '../hooks/usePremium';
+import { usePremium, PREMIUM_LEAGUES } from '../hooks/usePremium';
+import { supabase } from '../lib/supabase';
+import { useLanguage } from '../hooks/useLanguage';
 import type { Match, MatchResult, Exercise } from '../types/database';
 
 const LEAGUES = [
@@ -31,6 +34,7 @@ export default function MatchesScreen() {
   const { profile } = useAuth();
   const { canAccessLeague } = usePremium();
   const navigation = useNavigation<any>();
+  const { t } = useLanguage();
   const [activeLeague, setActiveLeague] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,6 +53,10 @@ export default function MatchesScreen() {
   }, [refetch]);
 
   function handleOpenBet(match: Match) {
+    if (new Date() >= new Date(match.kickoff_time)) {
+      Alert.alert(t('matches_started'), t('matches_started_msg'));
+      return;
+    }
     if (!canAccessLeague(match.league_name)) {
       navigation.navigate('Paywall', { feature: 'general' });
       return;
@@ -66,23 +74,33 @@ export default function MatchesScreen() {
     amount: number,
     unit: string,
   ) {
-    return createBet(matchId, opponentId, prediction, exercise, amount, unit);
+    if (selectedMatch && PREMIUM_LEAGUES.includes(selectedMatch.league_name)) {
+      const { data: opp } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', opponentId)
+        .single();
+      if (!opp?.is_admin) {
+        Alert.alert(
+          'Vinurinn þinn er ekki með premium 🔒',
+          'Báðir þurfa að vera með premium áskrift til að geta veðjað á þessa deild.',
+        );
+        return { error: new Error('opponent_not_premium') };
+      }
+    }
+    const { bet, error } = await createBet(matchId, opponentId, prediction, exercise, amount, unit);
+    return { error, betId: bet?.id };
   }
 
-  const today = new Date().toDateString();
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toDateString();
+  // Use UTC date strings for bucketing — kickoff_time from Supabase is always UTC ISO
+  const todayUTC    = new Date().toISOString().slice(0, 10);
+  const tomorrowUTC = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
-  const todayMatches = matches.filter(
-    (m) => new Date(m.kickoff_time).toDateString() === today
-  );
-  const tomorrowMatches = matches.filter(
-    (m) => new Date(m.kickoff_time).toDateString() === tomorrowStr
-  );
-  const laterMatches = matches.filter((m) => {
-    const d = new Date(m.kickoff_time).toDateString();
-    return d !== today && d !== tomorrowStr;
+  const todayMatches    = matches.filter((m) => m.kickoff_time.slice(0, 10) === todayUTC);
+  const tomorrowMatches = matches.filter((m) => m.kickoff_time.slice(0, 10) === tomorrowUTC);
+  const laterMatches    = matches.filter((m) => {
+    const d = m.kickoff_time.slice(0, 10);
+    return d !== todayUTC && d !== tomorrowUTC;
   });
 
   return (
@@ -90,7 +108,7 @@ export default function MatchesScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={s.header}>
-        <Text style={s.headerTitle}>Leikir</Text>
+        <Text style={s.headerTitle}>{t('matches_title')}</Text>
       </View>
 
       <ScrollView
@@ -136,27 +154,25 @@ export default function MatchesScreen() {
       >
         {loading && matches.length === 0 ? (
           <View style={s.loadingState}>
-            <Text style={s.loadingText}>Hleður leikjum...</Text>
+            <Text style={s.loadingText}>{t('common_loading')}</Text>
           </View>
         ) : error ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>⚠️</Text>
-            <Text style={s.emptyTitle}>Ekki tókst að sækja leiki</Text>
+            <Text style={s.emptyTitle}>{t('matches_no_matches')}</Text>
             <Text style={s.emptySub}>{error}</Text>
           </View>
         ) : matches.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyIcon}>📅</Text>
-            <Text style={s.emptyTitle}>Engir leikir fundust</Text>
-            <Text style={s.emptySub}>
-              Prófaðu að velja aðra deild eða athugaðu aftur síðar.
-            </Text>
+            <Text style={s.emptyTitle}>{t('matches_no_matches')}</Text>
+            <Text style={s.emptySub}>{t('matches_no_matches_sub')}</Text>
           </View>
         ) : (
           <>
             {todayMatches.length > 0 && (
               <View>
-                <Text style={s.dateLabel}>Í DAG</Text>
+                <Text style={s.dateLabel}>{t('matches_today')}</Text>
                 {todayMatches.map((m) => (
                   <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
@@ -165,7 +181,7 @@ export default function MatchesScreen() {
 
             {tomorrowMatches.length > 0 && (
               <View>
-                <Text style={s.dateLabel}>Á MORGUN</Text>
+                <Text style={s.dateLabel}>{t('matches_tomorrow')}</Text>
                 {tomorrowMatches.map((m) => (
                   <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
@@ -174,7 +190,7 @@ export default function MatchesScreen() {
 
             {laterMatches.length > 0 && (
               <View>
-                <Text style={s.dateLabel}>SÍÐAR</Text>
+                <Text style={s.dateLabel}>{t('matches_later')}</Text>
                 {laterMatches.map((m) => (
                   <MatchCard key={m.id} match={m} onOpenBet={handleOpenBet} />
                 ))}
@@ -196,6 +212,7 @@ export default function MatchesScreen() {
           setSelectedMatch(null);
           setSelectedPrediction(null);
         }}
+        onPremiumRequired={() => navigation.navigate('Paywall')}
         onSubmit={handleSubmitBet}
       />
     </SafeAreaView>

@@ -1,0 +1,14 @@
+[functions.send-push]
+verify_jwt = false
+
+[functions.challenge-reminders]
+verify_jwt = false
+
+[functions.strava-auth]
+verify_jwt = true
+
+[functions.bet-invite]
+verify_jwt = false
+
+[functions.privacy-policy]
+verify_jwt = false
