@@ -12,7 +12,7 @@ import { Platform } from 'react-native';
 const RC_API_KEY_IOS     = process.env.EXPO_PUBLIC_RC_IOS_KEY!;
 const RC_API_KEY_ANDROID = process.env.EXPO_PUBLIC_RC_ANDROID_KEY!;
 
-export const ENTITLEMENT_PREMIUM = 'premium';
+export const ENTITLEMENT_PREMIUM = 'Fitbet Pro';
 export const PRODUCT_MONTHLY     = 'fitbet_premium_monthly';
 
 // ── Setup ────────────────────────────────────────────────────

@@ -152,6 +152,14 @@ export function usePushNotifications(
 
     // Save token to Supabase
     const platform = Platform.OS as 'ios' | 'android';
+
+    // 1. Update profiles table (as requested in review)
+    await supabase
+      .from('profiles')
+      .update({ push_token: token })
+      .eq('id', userId);
+
+    // 2. Also keep push_tokens table for history/multiple devices
     await supabase
       .from('push_tokens')
       .upsert(
@@ -172,14 +180,14 @@ export function usePushNotifications(
       case 'bet_declined':
       case 'bet_won':
       case 'bet_lost':
-        nav.navigate('Main', { screen: 'Áskoranir' });
+        nav.navigate('Main', { screen: 'Challenges' });
         break;
 
       case 'challenge_assigned':
       case 'challenge_submitted':
       case 'challenge_approved':
       case 'challenge_rejected':
-        nav.navigate('Main', { screen: 'Áskoranir' });
+        nav.navigate('Main', { screen: 'Challenges' });
         break;
 
       case 'friend_request':

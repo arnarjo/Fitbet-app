@@ -30,11 +30,11 @@ const Tab   = createBottomTabNavigator();
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    Heim:       '⚽',
-    Leikir:     '📅',
-    Áskoranir:  '💪',
-    Stigatafla: '🏆',
-    Prófíll:    '👤',
+    Home:        '⚽',
+    Matches:     '📅',
+    Challenges:  '💪',
+    Leaderboard: '🏆',
+    Profile:     '👤',
   };
   return (
     <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
@@ -63,11 +63,11 @@ function MainTabs() {
         tabBarInactiveTintColor: '#4a6878',
       })}
     >
-      <Tab.Screen name="Heim"        component={HomeScreen} />
-      <Tab.Screen name="Leikir"      component={MatchesScreen} />
-      <Tab.Screen name="Áskoranir"   component={ChallengesScreen} />
-      <Tab.Screen name="Stigatafla"  component={LeaderboardScreen} />
-      <Tab.Screen name="Prófíll"     component={ProfileScreen} />
+      <Tab.Screen name="Home"        component={HomeScreen} options={{ tabBarLabel: 'Heim' }} />
+      <Tab.Screen name="Matches"     component={MatchesScreen} options={{ tabBarLabel: 'Leikir' }} />
+      <Tab.Screen name="Challenges"  component={ChallengesScreen} options={{ tabBarLabel: 'Áskoranir' }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: 'Stigatafla' }} />
+      <Tab.Screen name="Profile"     component={ProfileScreen} options={{ tabBarLabel: 'Prófíll' }} />
     </Tab.Navigator>
   );
 }
@@ -108,7 +108,7 @@ export default function RootNavigator({ onRouteChange }: RootNavigatorProps) {
         {session ? (
           <>
             <Stack.Screen name="Main"              component={MainTabs} />
-            <Stack.Screen name="Tímabilsveðmál"   component={SeasonScreen} />
+            <Stack.Screen name="Season"            component={SeasonScreen} />
             <Stack.Screen name="Leaderboard"       component={LeaderboardScreen} />
             <Stack.Screen name="Leagues"           component={LeaguesScreen} />
             <Stack.Screen name="Friends"           component={FriendsScreen} />

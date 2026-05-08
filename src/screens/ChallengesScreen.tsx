@@ -83,12 +83,16 @@ export default function ChallengesScreen() {
   async function fetchChallenges() {
     if (!profile?.id) return;
     setChallengesLoading(true);
+
+    const twoDaysAgoIso = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
     const { data } = await supabase
       .from('challenges')
-      .select('*, loser:profiles!loser_id(*), winner:profiles!winner_id(*), proofs:challenge_proofs(*), bet:bets(match:matches(home_team:teams!home_team_id(name), away_team:teams!away_team_id(name)))')
+      .select('*, loser:profiles!loser_id(*), winner:profiles!winner_id(*), proofs:challenge_proofs(*), bet:bets(match:matches(home_team:teams!home_team_id(name), away_team:teams!away_team_id(name), home_score, away_score, result))')
       .or(`loser_id.eq.${profile.id},winner_id.eq.${profile.id}`)
-      .not('status', 'eq', 'approved')
+      .or(`status.neq.approved,completed_at.gt.${twoDaysAgoIso}`)
       .order('created_at', { ascending: false });
+
     setChallenges(data ?? []);
     setChallengesLoading(false);
   }
@@ -521,9 +525,20 @@ export default function ChallengesScreen() {
             : `${item.loser?.full_name ?? item.loser?.username} ${t('challenges_must_complete')}`}
         </Text>
         {item.bet?.match && (
-          <Text style={s.matchSubText}>
-            ⚽ {item.bet.match.home_team?.name} – {item.bet.match.away_team?.name}
-          </Text>
+          <View>
+            <Text style={s.matchSubText}>
+              ⚽ {item.bet.match.home_team?.name} – {item.bet.match.away_team?.name}
+            </Text>
+            {item.status === 'approved' && item.bet.match.result && (
+              <View style={[s.scoreBox, { marginTop: -4, marginBottom: 8, padding: 8, opacity: 0.8 }]}>
+                <View style={s.scoreNums}>
+                  <Text style={[s.scoreText, { fontSize: 14 }]}>
+                    {item.bet.match.home_score} - {item.bet.match.away_score}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
         )}
         {item.due_date && (
           <Text style={{ fontSize: 11, color: '#4a6878', marginTop: 4 }}>

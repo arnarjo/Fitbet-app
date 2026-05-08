@@ -195,7 +195,7 @@ export default function HomeScreen() {
   }
 
   function handleRematch() {
-    navigation.navigate('Main', { screen: 'Áskoranir' });
+    navigation.navigate('Main', { screen: 'Challenges' });
   }
 
   // ── Render ───────────────────────────────────────────────
@@ -223,14 +223,14 @@ export default function HomeScreen() {
           </View>
           <View style={s.topBarRight}>
             {(openChallenges > 0 || pendingBets > 0) && (
-              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })}>
+              <TouchableOpacity style={s.alertPill} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })}>
                 <View style={s.alertDot} />
                 <Text style={s.alertText}>
                   {openChallenges > 0 ? `${openChallenges} áskorun` : `${pendingBets} veðmál`}
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => navigation.navigate('Prófíll')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
               <View style={s.profileCircle}>
                 <Text style={s.profileInitials}>
                   {getInitials(profile?.full_name ?? profile?.username ?? 'MÉR')}
@@ -303,7 +303,7 @@ export default function HomeScreen() {
         {/* ── Season banner ── */}
         <TouchableOpacity
           style={s.seasonBanner}
-          onPress={() => navigation.navigate('Tímabilsveðmál')}
+          onPress={() => navigation.navigate('Season')}
           activeOpacity={0.85}
         >
           <View style={s.seasonBannerLeft}>
@@ -318,7 +318,7 @@ export default function HomeScreen() {
 
         {/* ── Alert banners ── */}
         {openChallenges > 0 && (
-          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
+          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>⚠️</Text>
             <View style={{ flex:1 }}>
               <Text style={s.alertBannerTitle}>{openChallenges} óskilin áskorun!</Text>
@@ -329,7 +329,7 @@ export default function HomeScreen() {
         )}
 
         {pendingBets > 0 && (
-          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Áskoranir' })} activeOpacity={0.85}>
+          <TouchableOpacity style={[s.alertBanner, s.alertBannerBlue]} onPress={() => navigation.navigate('Main', { screen: 'Challenges' })} activeOpacity={0.85}>
             <Text style={s.alertBannerIcon}>🎯</Text>
             <View style={{ flex:1 }}>
               <Text style={[s.alertBannerTitle, { color:'#47C4EE' }]}>{pendingBets} ósvarað veðmál!</Text>

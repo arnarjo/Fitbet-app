@@ -232,33 +232,38 @@ export default function AdminScreen() {
     const now = new Date().toISOString();
 
     // Settle each bet — compare by team UUID
-    for (const b of bets ?? []) {
+    const updates = (bets ?? []).map(b => {
       const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
       const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
-      await supabase.from('season_bets').update({
+      return supabase.from('season_bets').update({
         status:    'settled',
         winner_id: challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null,
         loser_id:  challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null,
         settled_at: now,
       }).eq('id', b.id);
-    }
-
-    // Mark market settled (store team UUID in winning_team_id)
-    await supabase.from('season_markets').update({
-      status: 'settled',
-      winning_team_id: winningTeamId,
-      settled_at: now,
-    }).eq('id', mk.id);
+    });
 
     // Update profile stats for winners and losers
-    for (const b of bets ?? []) {
+    const profileUpdates = (bets ?? []).flatMap(b => {
       const challengerWins = winningTeamId ? b.challenger_pick === winningTeamId : false;
       const opponentWins   = winningTeamId ? b.opponent_pick   === winningTeamId : false;
       const winnerId = challengerWins ? b.challenger_id : opponentWins ? b.opponent_id : null;
       const loserId  = challengerWins ? b.opponent_id   : opponentWins ? b.challenger_id : null;
-      if (winnerId) await supabase.rpc('increment_wins', { p_user_id: winnerId });
-      if (loserId)  await supabase.rpc('increment_losses', { p_user_id: loserId });
-    }
+      const calls = [];
+      if (winnerId) calls.push(supabase.rpc('increment_wins', { p_user_id: winnerId }));
+      if (loserId)  calls.push(supabase.rpc('increment_losses', { p_user_id: loserId }));
+      return calls;
+    });
+
+    await Promise.all([
+      ...updates,
+      ...profileUpdates,
+      supabase.from('season_markets').update({
+        status: 'settled',
+        winning_team_id: winningTeamId,
+        settled_at: now,
+      }).eq('id', mk.id)
+    ]);
 
     // Send notifications
     const notifs: any[] = [];

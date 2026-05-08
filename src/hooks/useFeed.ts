@@ -160,26 +160,26 @@ function mapRawNotif(n: any, isMe: boolean): FeedEvent {
 // ── Feed event message builder (Icelandic) ───────────────────
 export function buildFeedMessage(event: FeedEvent, myName: string): {
   actor: string;
-  message: string;
+  msg: string;
   color: string;
   emoji: string;
 } {
   const actor = event.isMe ? 'Þú' : event.actorName;
 
-  const map: Record<string, { message: string; color: string; emoji: string }> = {
-    bet_won:             { message: 'vannst veðmál',            color: '#00e5a0', emoji: '🏆' },
-    bet_lost:            { message: 'tapaðir veðmáli',          color: '#ff4a6e', emoji: '😅' },
-    bet_received:        { message: 'fékk nýja veðmálsbeiðni', color: '#ffc940', emoji: '🎯' },
-    bet_accepted:        { message: 'samþykkti veðmál',         color: '#3d8bff', emoji: '✅' },
-    bet_declined:        { message: 'hafnaði veðmáli',          color: '#9090aa', emoji: '❌' },
-    challenge_assigned:  { message: 'þarft að klára áskorun',  color: '#ff4a6e', emoji: '💪' },
-    challenge_submitted: { message: 'sendi sönnun',             color: '#ffc940', emoji: '📸' },
-    challenge_approved:  { message: 'kláraði áskorun',         color: '#00e5a0', emoji: '✓' },
-    challenge_rejected:  { message: 'sönnun var hafnað',        color: '#9090aa', emoji: '🔄' },
-    friend_request:      { message: 'sendi þér vinarbeiðni',   color: '#a855f7', emoji: '👋' },
-    friend_accepted:     { message: 'er nú vinur þinn',        color: '#00e5a0', emoji: '🤝' },
+  const map: Record<string, { msg: string; color: string; emoji: string }> = {
+    bet_won:             { msg: 'vannst veðmál',            color: '#00e5a0', emoji: '🏆' },
+    bet_lost:            { msg: 'tapaðir veðmáli',          color: '#ff4a6e', emoji: '😅' },
+    bet_received:        { msg: 'fékk nýja veðmálsbeiðni', color: '#ffc940', emoji: '🎯' },
+    bet_accepted:        { msg: 'samþykkti veðmál',         color: '#3d8bff', emoji: '✅' },
+    bet_declined:        { msg: 'hafnaði veðmáli',          color: '#9090aa', emoji: '❌' },
+    challenge_assigned:  { msg: 'þarft að klára áskorun',  color: '#ff4a6e', emoji: '💪' },
+    challenge_submitted: { msg: 'sendi sönnun',             color: '#ffc940', emoji: '📸' },
+    challenge_approved:  { msg: 'kláraði áskorun',         color: '#00e5a0', emoji: '✓' },
+    challenge_rejected:  { msg: 'sönnun var hafnað',        color: '#9090aa', emoji: '🔄' },
+    friend_request:      { msg: 'sendi þér vinarbeiðni',   color: '#a855f7', emoji: '👋' },
+    friend_accepted:     { msg: 'er nú vinur þinn',        color: '#00e5a0', emoji: '🤝' },
   };
 
-  const cfg = map[event.type] ?? { message: event.body, color: '#9090aa', emoji: '📣' };
+  const cfg = map[event.type] ?? { msg: event.body, color: '#9090aa', emoji: '📣' };
   return { actor, ...cfg };
 }

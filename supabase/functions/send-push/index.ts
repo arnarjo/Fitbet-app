@@ -43,14 +43,30 @@ serve(async (req) => {
       });
     }
 
-    // 1. Get user's push tokens
-    const { data: tokenRows, error: tokenError } = await sb
-      .from('push_tokens')
-      .select('token, platform')
-      .eq('user_id', user_id)
-      .eq('active', true);
+    // 1. Get user's push tokens from profiles (primary) and push_tokens (history)
+    const { data: profile } = await sb.from('profiles').select('push_token').eq('id', user_id).single();
+    const { data: historyTokens } = await sb.from('push_tokens').select('token, platform').eq('user_id', user_id).eq('active', true);
 
-    if (tokenError || !tokenRows || tokenRows.length === 0) {
+    const tokensToNotify: Array<{ token: string; platform: string }> = [];
+
+    if (profile?.push_token) {
+      // Basic heuristic: Expo tokens usually start with ExponentPushToken, others are native FCM/APNS
+      const isExpo = profile.push_token.startsWith('ExponentPushToken');
+      tokensToNotify.push({
+        token: profile.push_token,
+        platform: isExpo ? 'ios' : 'android'
+      });
+    }
+
+    if (historyTokens) {
+      historyTokens.forEach((row: any) => {
+        if (!tokensToNotify.find(t => t.token === row.token)) {
+          tokensToNotify.push(row);
+        }
+      });
+    }
+
+    if (tokensToNotify.length === 0) {
       await storeNotification(sb, user_id, title, body, data);
       return new Response(JSON.stringify({ status: 'no_token', stored: true }), {
         headers: { 'Content-Type': 'application/json' },
@@ -59,7 +75,7 @@ serve(async (req) => {
 
     const results = [];
 
-    for (const row of tokenRows) {
+    for (const row of tokensToNotify) {
       try {
         let res;
         if (row.platform === 'android') {
@@ -74,6 +90,7 @@ serve(async (req) => {
         // Deactivate invalid tokens
         if (res.error === 'DeviceNotRegistered' || res.error === 'InvalidToken') {
           await sb.from('push_tokens').update({ active: false }).eq('token', row.token);
+          await sb.from('profiles').update({ push_token: null }).eq('id', user_id).eq('push_token', row.token);
         }
       } catch (e) {
         console.error(`Error sending to token ${row.token}:`, e);

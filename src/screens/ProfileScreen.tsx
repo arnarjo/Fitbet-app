@@ -358,7 +358,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount}>
             <Text style={s.deleteText}>Eyða reikningi</Text>
           </TouchableOpacity>
-          <Text style={s.versionText}>FitBet v1.0.0 · is.fitbet.app</Text>
+          <Text style={s.versionText}>FitBet v1.1.0 · is.fitbet.app</Text>
         </View>
 
         <View style={{ height: 20 }} />

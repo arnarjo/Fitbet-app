@@ -162,6 +162,9 @@ export interface Challenge {
     match?: {
       home_team: { name: string } | null;
       away_team: { name: string } | null;
+      home_score: number | null;
+      away_score: number | null;
+      result: MatchResult | null;
     } | null;
   } | null;
 }
