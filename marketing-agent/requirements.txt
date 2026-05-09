@@ -1,3 +1,16 @@
+# FitBet Marketing Agent — Python dependencies
+
+# Claude AI
 anthropic>=0.40.0
+
+# Terminal UI
 rich>=13.0.0
+
+# Environment variables
 python-dotenv>=1.0.0
+
+# Scheduling
+APScheduler>=3.10.0
+
+# HTTP client (for Meta API, TikTok API, DALL-E, Supabase)
+requests>=2.31.0
