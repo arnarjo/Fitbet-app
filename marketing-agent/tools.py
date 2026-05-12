@@ -486,10 +486,13 @@ def handle_show_weekly_schedule() -> str:
 
 def process_tool_call(tool_name: str, tool_input: dict) -> str:
     if tool_name == "save_to_file":
+        content = tool_input.get("content", "")
+        if not content:
+            return "⚠️ No content provided to save — skipping."
         result = handle_save_to_file(
-            filename=tool_input["filename"],
-            content=tool_input["content"],
-            content_type=tool_input["content_type"],
+            filename=tool_input.get("filename", "fitbet-content"),
+            content=content,
+            content_type=tool_input.get("content_type", "post"),
         )
         return f"✅ Saved: output/{result['name']}" if result["success"] else "❌ Save failed"
 
