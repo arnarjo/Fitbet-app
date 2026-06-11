@@ -17,6 +17,7 @@ if (!FOOTBALL_API_KEY || !FOOTBALL_API_BASE_URL) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const LEAGUES = [
+  { id: 1,   name: 'FIFA World Cup',         season: 2026 },
   { id: 164, name: 'Besta deild karla',      season: 2026 },
   { id: 165, name: 'Lengjudeild karla',      season: 2026 },
   { id: 39,  name: 'Premier League',         season: 2025 },
